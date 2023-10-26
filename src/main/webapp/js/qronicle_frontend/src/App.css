@@ -1,0 +1,286 @@
+/*--------------Header---------------*/
+.navbar{
+  background-color: #242424;
+}
+
+.header-item{
+  color: white;
+  text-decoration: none;
+  padding-left: 10px;
+}
+
+.header-item:hover{
+  color: rgb(87, 173, 231);;
+  text-decoration: none;
+}
+
+.signup-select {
+  border-color: #242424;
+}
+
+.logout_btn{
+  background: #242424;
+  border-color: rgb(87, 173, 231);;
+  text-decoration: none;
+  color: white;
+  border-radius: 10px;
+  text-align: center;
+  padding: 5px 10px;
+}
+
+.logout_btn:hover{
+  padding: 5px 10px;
+  border-color: rgb(87, 173, 231);;
+  background-color: rgb(87, 173, 231);;
+  color: black;
+}
+
+/*--------------Item Buttons---------------*/
+
+.add-btn{
+  background-color: white;
+  border-color: #242424;
+  border-width: 1px;
+  color: black;
+  border-radius: 25px;
+  text-align: center;
+}
+
+.add-btn:hover{
+  background-color: #242424;
+  border-color: #242424;
+  color: white;
+  text-align: right;
+}
+
+.delete-btn{
+  background-color: white;
+  border-color: #d10303;
+  border-width: 1px;
+  color: #d10303;
+  border-radius: 25px;
+  text-align: center;
+}
+
+.delete-btn:hover{
+  background-color: #d10303;
+  border-color: #d10303;
+  color: white;
+  text-align: right;
+} 
+
+.item-link{
+  text-decoration: none;
+  text-align: center;
+  color: white;
+  border-color: #242424;
+  border-radius: 6%;
+  background-color: #464545;
+  padding: 6px 4px;
+}
+
+/*--------------Page Texts---------------*/
+.page-title{
+  text-align: center;
+  font-size: 2em;
+}
+
+.card-title{
+  text-align: center;
+}
+
+.qr-link{
+  background-color: white;
+  text-decoration: none;
+  color: #242424;
+  border-color: #242424;
+  width: 50%;
+}
+
+/*--------------Categories---------------*/
+.category-btn{
+  background-color: white;
+  text-decoration: none;
+  color: #242424;
+  border-color: #242424;
+  width: 50%;
+}
+
+.category-btn:hover{
+  background-color: white;
+  color: black;
+  border-color: rgb(87, 173, 231);
+}
+
+.category-btn:active{
+  background-color: rgb(87, 173, 231);;
+  color: black;
+  border-color: rgb(87, 173, 231);;
+}
+
+.category-container {
+  border-style: solid;
+  border-color: rgb(87, 173, 231);
+  border-radius: 25px;
+  border-width: 1px;
+  width: 40%;
+  text-align: center;
+  line-height: 20px;
+}
+
+.tag-list{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 1.5em;
+  max-width: 1200px;
+  margin: auto;
+  padding: 2em;
+}
+.tags{
+  color: black;
+  list-style: none;
+}
+
+.tag-div {
+  border-style: solid;
+  border-color: rgb(87, 173, 231);
+  background-color: rgb(87, 173, 231);
+  border-radius: 25px;
+  border-width: 1px;
+  text-align: center;
+  line-height: 20px;
+}
+
+.view-container {
+  border-style: solid;
+  border-color: #242424;
+  border-radius: 25px;
+  border-width: 1px;
+  width: 25%;
+  text-align: center;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.view-link {
+  text-decoration: none;
+  color: black;
+}
+.qr-code {
+  border-radius: 10%;
+}
+
+/*-------------Profile----------------*/
+.profile-card {
+  border-radius: 25px;
+}
+
+.profile-page-stack {
+  margin: 1em;
+}
+
+.profile-name {
+  font-weight: bold;
+  font-size:x-large;
+}
+
+.profile-username {
+  font-weight: normal;
+  font-size: larger;
+}
+
+.profile-add-btn{
+  background-color: white;
+  border-color: rgb(87, 173, 231);
+  border-width: 1px;
+  color: black;
+  border-radius: 25px;
+  text-align: center;
+  padding: 0.5% 7%;
+}
+
+.profile-add-btn:hover{
+  background-color: white;
+  border-color: #242424;
+  color: black;
+}
+
+.add-btn{
+  background-color: white;
+  border-color: rgb(87, 173, 231);
+  border-width: 1px;
+  color: black;
+  border-radius: 25px;
+  text-align: center;
+  padding: 1% 7%;
+}
+
+.add-btn:hover{
+  background-color: #242424;
+  border-color: #242424;
+  color: white;
+  text-align: right;
+}
+
+.profile-edit-container {
+  border-style: solid;
+  border-color: #242424;
+  border-radius: 25px;
+  border-width: 1px;
+  width: 40%;
+  text-align: center;
+}
+
+.profile-edit-link {
+  text-decoration: none;
+  color: black;
+}
+
+.item-card-id {
+  color:#464545;
+  font-size: small;
+}
+
+/*------------TIMELINE---------------*/
+
+.view-container-tl {
+  border-style: solid;
+  border-color: rgb(87, 173, 231);
+  border-radius: 25px;
+  border-width: 2px;
+  width: 30%;
+  text-align: center;
+  margin: auto;
+}
+
+.tl-break {
+  width: 70%;
+  margin-right: auto;
+  margin-left: auto;
+  margin-top: 1em;
+  height: 2px;
+}
+
+.view-link-tl {
+  text-decoration: none;
+  color: white;
+}
+
+
+/*----------------Form------------------*/
+.form-label {
+  font-weight: bold;
+}
+
+/*----------Item Page--------------*/
+.img-btn {
+  border: none;
+  background-color: transparent;
+  font-size: xx-large;
+  font-weight: bold;
+}
+
+/*----------Item Page--------------*/
+.item-card-name {
+  font-weight: bold;
+}
