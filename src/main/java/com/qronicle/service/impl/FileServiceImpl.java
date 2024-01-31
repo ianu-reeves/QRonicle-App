@@ -127,7 +127,7 @@ public class FileServiceImpl implements FileService {
     // Returns a nested directory based on the name of the file
     // Intended to be used on hashed file names to generate a distributed file system
     // E.g. "test_filename.txt" hased to "351133bac485da3eeb2b576280df426f.txt" generates directory chain of
-    // 35\\11\\33 based on first 6 characters in file name
+    // 35\11\33 based on first 6 characters in file name
     private String getDirectoryChain(String fileName) {
         return "" + fileName.charAt(0) + fileName.charAt(1) + "\\" +
                 fileName.charAt(2) + fileName.charAt(3) + "\\" +

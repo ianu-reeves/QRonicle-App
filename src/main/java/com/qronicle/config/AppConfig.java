@@ -18,9 +18,11 @@ import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.validation.beanvalidation.MethodValidationPostProcessor;
 import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 import javax.sql.DataSource;
 import java.beans.PropertyVetoException;
@@ -123,6 +125,15 @@ public class AppConfig implements WebMvcConfigurer {
     @Bean
     public MethodValidationPostProcessor methodValidationPostProcessor() {
         return new MethodValidationPostProcessor();
+    }
+
+    @Bean
+    public ViewResolver viewResolver() {
+        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+        resolver.setPrefix("/WEB-INF/view/");
+        resolver.setSuffix(".jsp");
+
+        return resolver;
     }
 
     // Identifies locations for CSS and JS resources

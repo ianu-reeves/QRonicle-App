@@ -1,7 +1,7 @@
 package com.qronicle.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonView;
+import com.qronicle.enums.AccountProvider;
 import com.qronicle.enums.PrivacyStatus;
 import com.qronicle.enums.UserType;
 import org.hibernate.annotations.DynamicUpdate;
@@ -50,6 +50,13 @@ public class User {
     @Column(name = "signup_date", updatable = false)
     private LocalDate signupDate;
 
+    @Enumerated(value = EnumType.STRING)
+    @Column(name = "account_provider")
+    private AccountProvider accountProvider;
+
+    @Column(name = "provider_id")
+    private String providerId;
+
     @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
             name = "users_roles",
@@ -65,6 +72,7 @@ public class User {
 
     public User() {
         this.signupDate = LocalDate.now();
+        this.accountProvider = AccountProvider.LOCAL;
     }
 
     public User(String username, String password, String firstName, String lastName, String email, UserType userType, PrivacyStatus privacyStatus) {
@@ -168,6 +176,22 @@ public class User {
 
     public void setSignupDate(LocalDate signupDate) {
         this.signupDate = signupDate;
+    }
+
+    public AccountProvider getAccountProvider() {
+        return accountProvider;
+    }
+
+    public void setAccountProvider(AccountProvider accountProvider) {
+        this.accountProvider = accountProvider;
+    }
+
+    public String getProviderId() {
+        return providerId;
+    }
+
+    public void setProviderId(String providerId) {
+        this.providerId = providerId;
     }
 
     public Set<Role> getRoles() {

@@ -2,11 +2,12 @@ package com.qronicle.dao.impl;
 
 import com.qronicle.dao.interfaces.UserDao;
 import com.qronicle.entity.User;
+import com.qronicle.enums.AccountProvider;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -58,6 +59,44 @@ public class UserDaoImpl implements UserDao {
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
+        return user;
+    }
+
+    @Override
+    public User findUserByEmail(String email) {
+        Session session = sessionFactory.getCurrentSession();
+        User user = null;
+        Query<User> query = session.createQuery("FROM User u LEFT JOIN FETCH u.items WHERE u.email=:uemail", User.class);
+        query.setParameter("uemail", email);
+
+        try {
+            user = query.getSingleResult();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return user;
+    }
+
+    @Override
+    public User findUserByOAuth2UserRequest(OAuth2UserRequest request) {
+        Session session = sessionFactory.getCurrentSession();
+        User user = null;
+        AccountProvider provider = AccountProvider.valueOf(request.getClientRegistration().getRegistrationId());
+        String providerId = request.getClientRegistration().getRegistrationId();
+
+        Query<User> query = session.createQuery(
+        "FROM User u LEFT JOIN FETCH u.items " +
+           "WHERE u.accountProvider=:provider " +
+           "AND u.providerId=:providerId", User.class);
+        query.setParameter("provider", provider);
+        query.setParameter("providerId", providerId);
+
+        try {
+            user = query.getSingleResult();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+
         return user;
     }
 

@@ -1,8 +1,5 @@
 package com.qronicle.controller;
 
-import antlr.StringUtils;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.oauth2.sdk.auth.JWTAuthentication;
 import com.qronicle.entity.User;
 import com.qronicle.exception.UserAlreadyExistsException;
 import com.qronicle.model.AuthRequest;
@@ -14,26 +11,25 @@ import com.qronicle.util.JWTUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
 import javax.validation.Valid;
-import java.security.Principal;
 import java.text.ParseException;
-import java.util.Map;
 
-@RestController
+@Controller
 @CrossOrigin
 @RequestMapping("/")
 public class AuthController {
@@ -72,20 +68,26 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse(authToken));
     }
 
-//    @PostMapping("/authenticate")
-//    public ResponseEntity<AuthResponse> authenticate(@RequestBody AuthRequest request) {
-//        String username = request.getUsername();
-//        try {
-//            authenticationManager.authenticate(
-//                    new UsernamePasswordAuthenticationToken(username, request.getPassword()));
-//        } catch (BadCredentialsException e) {
-//            throw new BadCredentialsException("Invalid username or password", e);
-//        }
-//        UserDetails userDetails = userService.loadUserByUsername(username);
-//        String token = jwtUtil.generateToken(userDetails);
-//
-//        return ResponseEntity.ok(new AuthResponse(token));
-//    }
+    @GetMapping("/login")
+    public String showLogin() {
+        return "login";
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> authenticate(@RequestBody AuthRequest request) {
+        String username = request.getUsername();
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(username, request.getPassword()));
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException("Invalid username or password", e);
+        }
+        UserDetails userDetails = userService.loadUserByUsername(username);
+        String token = jwtUtil.generateToken(userDetails);
+        System.out.println("Generated token for " +username + " with value: " + token);
+
+        return ResponseEntity.ok(new AuthResponse(token));
+    }
 
     // Endpoint for authenticating with oAuth2 login.
     // Returns a ResponseEntity containing an access token authorizing use of resource server API endpoints
@@ -104,7 +106,7 @@ public class AuthController {
     }
 
     @GetMapping("/test")
-    public String loginSuccess() throws ParseException {
+    public void loginSuccess() throws ParseException {
 //        OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
 //                authenticationToken.getAuthorizedClientRegistrationId(),
 //                authenticationToken.getName());
@@ -122,6 +124,14 @@ public class AuthController {
         System.out.println(oAuth2AuthenticationToken.isAuthenticated());
 
 
-        return "Logged in as " + SecurityContextHolder.getContext().getAuthentication().getName();
+        System.out.println("Logged in as " + SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+
+    @GetMapping("/test2")
+    public ResponseEntity getOauthUser(@AuthenticationPrincipal OAuth2User user) {
+        System.out.println(
+                "oAuth2User attributes: " + user.getAttributes() + "\n" +
+                "SecurtyContextHolder attributes: " + SecurityContextHolder.getContext().getAuthentication());
+        return ResponseEntity.ok(user.getAttributes());
     }
 }

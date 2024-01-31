@@ -6,8 +6,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.qronicle.filter.JWTAuthenticationFilter;
-import com.qronicle.security.UnauthorizedAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -40,7 +38,6 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -58,18 +55,12 @@ import java.util.stream.Collectors;
 public class SecurityConfig {
 
     private final Environment env;
-    private final LoginAuthenticationHandler loginAuthenticationHandler;
-
-    @Autowired
-    private JWTAuthenticationFilter jwtAuthenticationFilter;
 
     @Autowired
     private UserDetailsService userDetailsService;
 
-    @Autowired
-    private UnauthorizedAuthenticationEntryPoint authenticationEntryPoint;
-
     private static final List<String> oAuthClients = Arrays.asList("google", "github");
+
     private static final String CLIENT_PROPERTY_KEY = "spring.security.oauth2.client.registration.";
 
     @Value("${jwt.rsa.key.public}")
@@ -78,11 +69,11 @@ public class SecurityConfig {
     @Value("${jwt.rsa.key.private}")
     private RSAPrivateKey privateKey;
 
-    public SecurityConfig(
-            Environment env,
-            LoginAuthenticationHandler loginAuthenticationHandler) {
+    @Autowired
+    private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
+    public SecurityConfig(Environment env) {
         this.env = env;
-        this.loginAuthenticationHandler = loginAuthenticationHandler;
     }
 
     @Bean
@@ -132,74 +123,51 @@ public class SecurityConfig {
     }
 
 
-    // SecurityFilterChain for oAuth2 login
+    // SecurityFilterChain applied for authentication/ registration requests
     @Bean
     @Order(1)
     public SecurityFilterChain oauth2AuthenticationSecurityFilterChain(HttpSecurity http) throws Exception{
         http.authorizeRequests(authorizeRequests ->
-                                authorizeRequests   // configure request authorization handling
-                                        .antMatchers("/authenticate", "/register/**", "/*.css", "/js/**")
-                                        .permitAll()
-//                    .antMatchers(HttpMethod.OPTIONS).permitAll()
-//                    .antMatchers(HttpMethod.GET, "/secure/**").hasAnyAuthority("ROLE_USER")
-//                    .antMatchers(HttpMethod.GET, "/items/**", "/files/**", "/users/**").permitAll()
-//                    .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
-//                    .anyRequest().authenticated()
+            authorizeRequests   // configure request authorization handling
+                    .antMatchers("/authenticate", "/login", "/register/**", "/*.css", "/js/**")
+                    .permitAll()
                 )
-                //TODO: Investigate why this causes oauth to fail
-//                .exceptionHandling(configurer ->
-//                        configurer.authenticationEntryPoint(authenticationEntryPoint))
-                .formLogin().disable()
-//                .csrf().disable()
-//                .cors().and()
-//                .sessionManagement(
-//                    session ->
-//                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-//                )
-                //.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .formLogin()
+                .loginPage("/login")
+                .loginProcessingUrl("/process").and()
+                .csrf().disable()
+                .cors().and()
                 .authenticationProvider(authenticationProvider())
-//                .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
-                //.httpBasic().and()
                 .oauth2Login()
+                .loginPage("/login")
+                .successHandler(oAuth2AuthenticationSuccessHandler)
                 .clientRegistrationRepository(clientRegistrationRepository())
                 .authorizedClientService(authorizedClientService());
 
         return http.build();
     }
 
-//    @Bean
-//    @Order(2)
-//    SecurityFilterChain formLoginSecurityFilterChain(HttpSecurity http)  throws Exception {
-//        http.authorizeRequests(authorizeRequests ->
-//            authorizeRequests
-//                .antMatchers("/", "/register/**", "/login")
-//                .permitAll()
-//            )
-//
-//        return http.build();
-//    }
-
+    // SecurityFilterChain applied to requests made to resource server
     @Bean
-    @Order(3)
+    @Order(2)
     SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeRequests(authorizeRequests ->
             authorizeRequests
                 .antMatchers(HttpMethod.OPTIONS).permitAll()
                 .antMatchers(HttpMethod.GET, "/secure/**").hasAnyAuthority("ROLE_USER")
-                .antMatchers(HttpMethod.GET,  "/tags/**", "/items/**", "/files/**", "/users/**").permitAll()
+                .antMatchers(HttpMethod.GET,  "/test", "/tags/**", "/items/**", "/files/**", "/users/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
                 .anyRequest().authenticated()
             )
             .csrf().disable()
             .cors().and()
+            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
 
         return http.build();
     }
-
-    // TODO: Add third filterChain to allow for httpBasic login
 
     // Returns a repository of all valid oAuth sign-in options with client credentials
     // for the application configured for each.
@@ -219,7 +187,7 @@ public class SecurityConfig {
     }
 
     // Return a ClientRegistration object with application properties based on the passed client.
-    // Valid clients are "google", "facebook", and "github".
+    // Valid clients are "google" and "github".
     private ClientRegistration getRegistration(String clientName) {
         if (clientName == null) {
             return null;

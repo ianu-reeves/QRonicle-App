@@ -3,12 +3,14 @@ package com.qronicle.service.impl;
 import com.qronicle.dao.interfaces.RoleDao;
 import com.qronicle.dao.interfaces.UserDao;
 import com.qronicle.entity.Role;
+import com.qronicle.entity.User;
+import com.qronicle.enums.PrivacyStatus;
 import com.qronicle.enums.UserType;
 import com.qronicle.exception.InvalidCredentialsException;
 import com.qronicle.model.ChangeEmailForm;
 import com.qronicle.model.ChangePasswordForm;
+import com.qronicle.model.OAuth2UserDto;
 import com.qronicle.model.UserForm;
-import com.qronicle.entity.User;
 import com.qronicle.security.UserPrincipal;
 import com.qronicle.service.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +69,12 @@ public class UserServiceImpl implements UserService {
         return userDao.findUserByUsername(username);
     }
 
+    @Override
+    @Transactional
+    public User findUserByEmail(String email) {
+        return userDao.findUserByEmail(email);
+    }
+
     // Maps data transfer object representing User to a User object & saves it
     @Override
     @Transactional
@@ -84,6 +92,26 @@ public class UserServiceImpl implements UserService {
         user.addRole(defaultRole);
         userDao.save(user);
         return user;
+    }
+
+    @Override
+    @Transactional
+    public User addNewOAuth2User(OAuth2UserDto oAuth2UserDto) {
+        User user = new User();
+        user.setFirstName(oAuth2UserDto.getFirstName());
+        user.setLastName(oAuth2UserDto.getLastName());
+        user.setEmail(oAuth2UserDto.getEmail());
+        user.setAccountProvider(oAuth2UserDto.getAccountProvider());
+        user.setProviderId(oAuth2UserDto.getProviderId());
+        Role defaultRole = roleDao.findRoleByName("ROLE_USER");
+        user.addRole(defaultRole);
+        user.setPrivacyStatus(PrivacyStatus.PRIVATE);
+        user.setUserType(UserType.CASUAL);
+        user.setSignupDate(LocalDate.now());
+
+        userDao.save(user);
+
+        return  user;
     }
 
     @Override

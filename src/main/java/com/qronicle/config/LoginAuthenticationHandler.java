@@ -23,7 +23,8 @@ public class LoginAuthenticationHandler extends SavedRequestAwareAuthenticationS
     @Autowired
     private UserService userService;
 
-
+    // Redirect user to the page they attempted to access before authenticating, if applicable.
+    // Otherwise, redirect to home page
     @Override
     public void onAuthenticationSuccess(HttpServletRequest req, HttpServletResponse resp, Authentication auth) throws IOException, ServletException {
         String username = auth.getName();

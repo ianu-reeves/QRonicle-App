@@ -6,7 +6,6 @@ import com.qronicle.entity.Tag;
 import com.qronicle.entity.User;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.jpa.QueryHints;
 import org.hibernate.query.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,14 +32,6 @@ public class ItemDaoImpl implements ItemDao {
     public Item findItemById(long id) {
         Session session = sessionFactory.getCurrentSession();
         Item item = null;
-        // eliminate cartesian product of query by executing two statements
-//        Query<Item> query = session.createQuery("FROM Item WHERE id=:iid", Item.class);
-//        query.setParameter("iid", id);
-//        Query<Item> query = session.createQuery("SELECT DISTINCT i FROM Item i LEFT JOIN FETCH i.images WHERE i.id=:iid", Item.class);
-//        query.setParameter("iid", id);
-//        query.setHint(QueryHints.HINT_PASS_DISTINCT_THROUGH, false);
-//        List<Item> items = query.getResultList();
-//
         Query<Item> query = session.createQuery("FROM Item i LEFT JOIN FETCH i.tags WHERE i.id=:iid", Item.class);
         query.setParameter("iid", id);
 

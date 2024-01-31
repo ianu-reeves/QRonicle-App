@@ -8,8 +8,8 @@ import com.qronicle.exception.ItemNotFoundException;
 import com.qronicle.exception.UserNotFoundException;
 import com.qronicle.model.ItemForm;
 import com.qronicle.service.interfaces.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.constraints.Size;
-
 import java.util.List;
 import java.util.stream.Collectors;
 

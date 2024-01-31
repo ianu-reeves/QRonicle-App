@@ -1,6 +1,7 @@
 package com.qronicle.model;
 
 import com.qronicle.entity.User;
+import com.qronicle.enums.AccountProvider;
 import com.qronicle.enums.PrivacyStatus;
 import com.qronicle.validation.FieldMatch;
 import com.qronicle.validation.ValidEmail;
@@ -28,6 +29,7 @@ public class UserForm {
         this.matchingEmail = user.getEmail();
         this.userType = user.getUserType().toString();
         this.privacyStatus = user.getPrivacyStatus();
+        this.providerId = user.getUsername();
     }
 
     private long id;
@@ -58,12 +60,15 @@ public class UserForm {
     @ValidEmail
     private String matchingEmail;
 
-    //@NotNull
-    //@ValidUserType
     private String userType;
 
-    //@NotNull
     private PrivacyStatus privacyStatus;
+
+    @NotNull
+    private AccountProvider provider = AccountProvider.LOCAL;
+
+    @NotNull
+    private String providerId;
 
     public long getId() {
         return id;
@@ -143,5 +148,21 @@ public class UserForm {
 
     public void setPrivacyStatus(PrivacyStatus privacyStatus) {
         this.privacyStatus = privacyStatus;
+    }
+
+    public AccountProvider getProvider() {
+        return provider;
+    }
+
+    public void setProvider(AccountProvider provider) {
+        this.provider = provider;
+    }
+
+    public String getProviderId() {
+        return providerId;
+    }
+
+    public void setProviderId(String providerId) {
+        this.providerId = providerId;
     }
 }

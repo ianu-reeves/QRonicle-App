@@ -4,7 +4,6 @@ import com.qronicle.entity.Item;
 import com.qronicle.entity.Tag;
 import com.qronicle.entity.User;
 import com.qronicle.model.ItemForm;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
