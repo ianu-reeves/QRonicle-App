@@ -60,8 +60,11 @@ public class UserForm {
     @ValidEmail
     private String matchingEmail;
 
+    //@NotNull
+    //@ValidUserType
     private String userType;
 
+    //@NotNull
     private PrivacyStatus privacyStatus;
 
     @NotNull

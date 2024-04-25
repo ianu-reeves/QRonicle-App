@@ -6,6 +6,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.qronicle.filter.JWTAuthenticationFilter;
+import com.qronicle.security.UnauthorizedAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +40,10 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -55,12 +61,18 @@ import java.util.stream.Collectors;
 public class SecurityConfig {
 
     private final Environment env;
+    private final LoginAuthenticationHandler loginAuthenticationHandler;
+
+    @Autowired
+    private JWTAuthenticationFilter jwtAuthenticationFilter;
 
     @Autowired
     private UserDetailsService userDetailsService;
 
-    private static final List<String> oAuthClients = Arrays.asList("google", "github");
+    @Autowired
+    private UnauthorizedAuthenticationEntryPoint authenticationEntryPoint;
 
+    private static final List<String> oAuthClients = Arrays.asList("google", "github");
     private static final String CLIENT_PROPERTY_KEY = "spring.security.oauth2.client.registration.";
 
     @Value("${jwt.rsa.key.public}")
@@ -72,8 +84,11 @@ public class SecurityConfig {
     @Autowired
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
-    public SecurityConfig(Environment env) {
+    public SecurityConfig(
+            Environment env,
+            LoginAuthenticationHandler loginAuthenticationHandler) {
         this.env = env;
+        this.loginAuthenticationHandler = loginAuthenticationHandler;
     }
 
     @Bean
@@ -122,6 +137,21 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
+                "Accept", "Authorization", "X-Requested-With",
+                "Access-Control-Request-Method", "Access-Control-Request-Headers","Access-Control-Allow-Headers"));
+        configuration.addAllowedOrigin("http://localhost:3000");
+        configuration.setAllowCredentials(true);
+        configuration.setAllowedMethods(Arrays.asList("Access-Control-Allow-Methods",
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/cookielogin", configuration);
+
+        return source;
+    }
 
     // SecurityFilterChain applied for authentication/ registration requests
     @Bean
@@ -131,13 +161,29 @@ public class SecurityConfig {
             authorizeRequests   // configure request authorization handling
                     .antMatchers("/authenticate", "/login", "/register/**", "/*.css", "/js/**")
                     .permitAll()
+//                    .antMatchers(HttpMethod.OPTIONS).permitAll()
+//                    .antMatchers(HttpMethod.GET, "/secure/**").hasAnyAuthority("ROLE_USER")
+//                    .antMatchers(HttpMethod.GET, "/items/**", "/files/**", "/users/**").permitAll()
+//                    .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
+//                    .anyRequest().authenticated()
                 )
+                //TODO: Investigate why this causes oauth to fail
+//                .exceptionHandling(configurer ->
+//                        configurer.authenticationEntryPoint(authenticationEntryPoint))
                 .formLogin()
                 .loginPage("/login")
                 .loginProcessingUrl("/process").and()
                 .csrf().disable()
-                .cors().and()
+                .cors(cors -> {
+                    cors.configurationSource(corsConfigurationSource());
+                })
+                .sessionManagement(
+                    session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authenticationProvider(authenticationProvider())
+                //.httpBasic().and()
                 .oauth2Login()
                 .loginPage("/login")
                 .successHandler(oAuth2AuthenticationSuccessHandler)
@@ -154,16 +200,14 @@ public class SecurityConfig {
         http.authorizeRequests(authorizeRequests ->
             authorizeRequests
                 .antMatchers(HttpMethod.OPTIONS).permitAll()
-                .antMatchers(HttpMethod.GET, "/secure/**").hasAnyAuthority("ROLE_USER")
+                .antMatchers(HttpMethod.GET, "/auth/secure/**").hasAnyAuthority("ROLE_USER")
                 .antMatchers(HttpMethod.GET,  "/test", "/tags/**", "/items/**", "/files/**", "/users/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
                 .anyRequest().authenticated()
             )
             .csrf().disable()
             .cors().and()
-            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
-            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            .and()
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
             .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
 
         return http.build();

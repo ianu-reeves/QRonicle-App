@@ -3,9 +3,9 @@ package com.qronicle.service.interfaces;
 import com.qronicle.entity.Image;
 import com.qronicle.entity.Item;
 
-import java.util.List;
+import java.util.Set;
 
 public interface ImageService {
     Image findImageById(long id);
-    List<Image> findImagesByItem(Item item);
+    Set<Image> findImagesByItem(Item item);
 }

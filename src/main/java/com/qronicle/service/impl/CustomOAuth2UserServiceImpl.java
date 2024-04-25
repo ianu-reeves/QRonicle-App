@@ -77,7 +77,7 @@ public class CustomOAuth2UserServiceImpl implements CustomOAuth2UserService {
         return email;
     }
 
-    private ResponseEntity<CustomOAuth2UserServiceImpl.GithubEmail[]> getGithubEmails(String token) {
+    private ResponseEntity<GithubEmail[]> getGithubEmails(String token) {
         String URL = "https://api.github.com/user/emails";
         RestTemplate template = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -85,7 +85,7 @@ public class CustomOAuth2UserServiceImpl implements CustomOAuth2UserService {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<Object> request = new HttpEntity<>(headers);
 
-        return template.exchange(URL, HttpMethod.GET, request, CustomOAuth2UserServiceImpl.GithubEmail[].class);
+        return template.exchange(URL, HttpMethod.GET, request, GithubEmail[].class);
     }
 
     static class GithubEmail {

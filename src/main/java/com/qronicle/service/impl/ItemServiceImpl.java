@@ -1,48 +1,47 @@
 package com.qronicle.service.impl;
 
-import com.qronicle.dao.interfaces.ItemDao;
 import com.qronicle.entity.Item;
 import com.qronicle.entity.Tag;
 import com.qronicle.entity.User;
 import com.qronicle.model.ItemForm;
+import com.qronicle.repository.interfaces.ItemRepository;
 import com.qronicle.service.interfaces.ItemService;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.*;
+
+import java.util.List;
+import java.util.Set;
 
 @Service
 public class ItemServiceImpl implements ItemService {
-    private final ItemDao itemDao;
-    private final Environment env;
+    private final ItemRepository itemRepository;
 
-    public ItemServiceImpl(ItemDao itemDao, Environment env) {
-        this.itemDao = itemDao;
-        this.env = env;
+    public ItemServiceImpl(ItemRepository itemRepository) {
+        this.itemRepository = itemRepository;
     }
 
     @Override
     @Transactional
     public List<Item> getAll() {
-        return itemDao.getAll();
+        return itemRepository.getAll();
     }
 
     @Override
     @Transactional
     public Item findItemById(long id) {
-        return itemDao.findItemById(id);
+        return itemRepository.findItemById(id);
     }
 
     @Override
     @Transactional
-    public List<Item> findItemsByTag(Tag tag) {
-        return itemDao.findItemsByTag(tag);
+    public Set<Item> findItemsByTag(Tag tag) {
+        return itemRepository.findItemsByTag(tag);
     }
 
     @Override
     @Transactional
-    public List<Item> findItemsByUser(User user) {
-        return itemDao.findItemsByUser(user);
+    public Set<Item> findItemsByUser(User user) {
+        return itemRepository.findItemsByUser(user);
     }
 
     @Override
@@ -63,20 +62,20 @@ public class ItemServiceImpl implements ItemService {
             System.out.println("TAGS: ");
             item.getTags().forEach(tag -> System.out.println(tag.getDescription()));
         }
-        itemDao.save(item);
+        itemRepository.save(item);
         return item;
     }
 
     @Override
     @Transactional
     public void save(Item item) {
-        itemDao.save(item);
+        itemRepository.save(item);
     }
 
     @Override
     @Transactional
     public void delete(Item item) {
-        itemDao.delete(item);
+        itemRepository.delete(item);
     }
 
 }

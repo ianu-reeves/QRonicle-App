@@ -4,9 +4,9 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
-import com.qronicle.dao.interfaces.ImageDao;
 import com.qronicle.entity.Image;
 import com.qronicle.exception.InvalidFileException;
+import com.qronicle.repository.interfaces.ImageRepository;
 import com.qronicle.service.interfaces.FileService;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
@@ -36,11 +36,11 @@ public class FileServiceImpl implements FileService {
     private AmazonS3 client;
 
     private final Environment env;
-    private final ImageDao imageDao;
+    private final ImageRepository imageRepository;
 
-    public FileServiceImpl(Environment env, ImageDao imageDao) {
+    public FileServiceImpl(Environment env, ImageRepository imageRepository) {
         this.env = env;
-        this.imageDao = imageDao;
+        this.imageRepository = imageRepository;
     }
 
 
@@ -71,7 +71,7 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public boolean deleteFile(Image image) {
         client.deleteObject(bucketName, image.getFileName());
-        imageDao.delete(image);
+        imageRepository.delete(image);
         return true;
     }
 
@@ -126,8 +126,8 @@ public class FileServiceImpl implements FileService {
 
     // Returns a nested directory based on the name of the file
     // Intended to be used on hashed file names to generate a distributed file system
-    // E.g. "test_filename.txt" hased to "351133bac485da3eeb2b576280df426f.txt" generates directory chain of
-    // 35\11\33 based on first 6 characters in file name
+    // E.g. "test_filename.txt" hashed to "351133bac485da3eeb2b576280df426f.txt" generates directory chain of
+    // 35\\11\\33 based on first 6 characters in file name
     private String getDirectoryChain(String fileName) {
         return "" + fileName.charAt(0) + fileName.charAt(1) + "\\" +
                 fileName.charAt(2) + fileName.charAt(3) + "\\" +

@@ -6,12 +6,13 @@ import com.qronicle.entity.User;
 import com.qronicle.model.ItemForm;
 
 import java.util.List;
+import java.util.Set;
 
 public interface ItemService {
     List<Item> getAll();
     Item findItemById(long id);
-    List<Item> findItemsByTag(Tag tag);
-    List<Item> findItemsByUser(User user);
+    Set<Item> findItemsByTag(Tag tag);
+    Set<Item> findItemsByUser(User user);
     Item addItem(ItemForm itemForm);
     void save(Item item);
     void delete(Item item);

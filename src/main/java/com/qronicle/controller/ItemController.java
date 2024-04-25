@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.constraints.Size;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Validated
@@ -47,8 +48,8 @@ public class ItemController {
     }
 
     @GetMapping("/tags/{tag}")
-    public ResponseEntity<List<Item>> getItemsByTag(@PathVariable Tag tag) {
-        List<Item> items = itemService.findItemsByTag(tag);
+    public ResponseEntity<Set<Item>> getItemsByTag(@PathVariable Tag tag) {
+        Set<Item> items = itemService.findItemsByTag(tag);
 
         return ResponseEntity.ok(items);
     }
@@ -104,22 +105,22 @@ public class ItemController {
     }
 
     @GetMapping("/user/{username}")
-    public ResponseEntity<List<Item>> getItemsByUser(@PathVariable String username) {
+    public ResponseEntity<Set<Item>> getItemsByUser(@PathVariable String username) {
         User user = userService.findUserByUsername(username);
         if (user == null) {
             throw new UserNotFoundException("User with username '" + username +
                 "' does not exist or could not be found.");
         }
-        return ResponseEntity.ok(user.getItems());
+        return ResponseEntity.ok(itemService.findItemsByUser(user));
     }
 
     @GetMapping("/{id}/images")
-    public ResponseEntity<List<Image>> getImagesByItem(@PathVariable long id) {
+    public ResponseEntity<Set<Image>> getImagesByItem(@PathVariable long id) {
         Item item = itemService.findItemById(id);
         if (item == null) {
             throw new ItemNotFoundException("No item found with id of " + id);
         }
-        List<Image> images = imageService.findImagesByItem(item);
+        Set<Image> images = imageService.findImagesByItem(item);
 
         return ResponseEntity.ok(images);
     }
@@ -131,13 +132,15 @@ public class ItemController {
             throw new ItemNotFoundException("No item found with id of " + id);
         }
         try {
-            List<Image> images = imageService.findImagesByItem(item);
+            Set<Image> images = imageService.findImagesByItem(item);
             // delete all item's images
             // basic for-loop used to avoid Iterator errors when removing values
-            for (int i = 0; i < images.size(); i++) {
-                Image image = images.get(i);
-                fileService.deleteFile(image);
-            }
+            // TODO: Alter to work with Set
+            images.forEach(fileService::deleteFile);
+//            for (int i = 0; i < images.size(); i++) {
+//                Image image = images.stream().;
+//                fileService.deleteFile(image);
+//            }
             itemService.delete(item);
         } catch (Exception e) {
             throw new RuntimeException("Error deleting item with id " + id);

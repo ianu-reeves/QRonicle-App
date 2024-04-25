@@ -1,15 +1,14 @@
 package com.qronicle.model;
 
 import com.qronicle.entity.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
+// TODO: remove date field & default to upload date when Item is created
 public class ItemForm {
 
     public ItemForm() {

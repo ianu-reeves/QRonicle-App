@@ -9,6 +9,10 @@ import javax.validation.constraints.NotNull;
 public class OAuth2UserDto {
 
     @NotNull
+    @ValidEmail
+    private String username;
+
+    @NotNull
     private String providerId;
 
     @NotNull
@@ -28,11 +32,20 @@ public class OAuth2UserDto {
     }
 
     public OAuth2UserDto(String providerId, AccountProvider accountProvider, String firstName, String lastName, String email) {
+        this.username = email;
         this.providerId = providerId;
         this.accountProvider = accountProvider;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getProviderId() {

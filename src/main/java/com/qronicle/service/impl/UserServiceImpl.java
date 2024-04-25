@@ -1,7 +1,5 @@
 package com.qronicle.service.impl;
 
-import com.qronicle.dao.interfaces.RoleDao;
-import com.qronicle.dao.interfaces.UserDao;
 import com.qronicle.entity.Role;
 import com.qronicle.entity.User;
 import com.qronicle.enums.PrivacyStatus;
@@ -11,12 +9,11 @@ import com.qronicle.model.ChangeEmailForm;
 import com.qronicle.model.ChangePasswordForm;
 import com.qronicle.model.OAuth2UserDto;
 import com.qronicle.model.UserForm;
-import com.qronicle.security.UserPrincipal;
+import com.qronicle.repository.interfaces.RoleRepository;
+import com.qronicle.repository.interfaces.UserRepository;
 import com.qronicle.service.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,20 +22,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
-    private final UserDao userDao;
-    private final RoleDao roleDao;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     @Autowired
     private PasswordEncoder encoder;
 
-    public UserServiceImpl(UserDao userDao, RoleDao roleDao) {
-        this.userDao = userDao;
-        this.roleDao = roleDao;
+    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
     }
 
     @Override
@@ -48,31 +43,31 @@ public class UserServiceImpl implements UserService {
         if (auth == null)
             return null;
 
-        return userDao.findUserByUsername(auth.getName());
+        return userRepository.findUserByUsername(auth.getName());
     }
 
     @Override
     @Transactional
     public List<User> getAll() {
-        return userDao.getAll();
+        return userRepository.getAll();
     }
 
     @Override
     @Transactional
     public User findUserById(int id) {
-        return userDao.findUserById(id);
+        return userRepository.findUserById(id);
     }
 
     @Override
     @Transactional
     public User findUserByUsername(String username) {
-        return userDao.findUserByUsername(username);
+        return userRepository.findUserByUsername(username);
     }
 
     @Override
     @Transactional
     public User findUserByEmail(String email) {
-        return userDao.findUserByEmail(email);
+        return userRepository.findUserByEmail(email);
     }
 
     // Maps data transfer object representing User to a User object & saves it
@@ -88,9 +83,9 @@ public class UserServiceImpl implements UserService {
             null,
             userForm.getPrivacyStatus()
         );
-        Role defaultRole = roleDao.findRoleByName("ROLE_USER");
+        Role defaultRole = roleRepository.findRoleByName("ROLE_USER");
         user.addRole(defaultRole);
-        userDao.save(user);
+        userRepository.save(user);
         return user;
     }
 
@@ -103,13 +98,13 @@ public class UserServiceImpl implements UserService {
         user.setEmail(oAuth2UserDto.getEmail());
         user.setAccountProvider(oAuth2UserDto.getAccountProvider());
         user.setProviderId(oAuth2UserDto.getProviderId());
-        Role defaultRole = roleDao.findRoleByName("ROLE_USER");
+        Role defaultRole = roleRepository.findRoleByName("ROLE_USER");
         user.addRole(defaultRole);
         user.setPrivacyStatus(PrivacyStatus.PRIVATE);
         user.setUserType(UserType.CASUAL);
         user.setSignupDate(LocalDate.now());
 
-        userDao.save(user);
+        userRepository.save(user);
 
         return  user;
     }
@@ -123,7 +118,7 @@ public class UserServiceImpl implements UserService {
         } else {
             throw new InvalidCredentialsException("Old password not valid");
         }
-        userDao.save(user);
+        userRepository.save(user);
 
         return user;
     }
@@ -137,7 +132,7 @@ public class UserServiceImpl implements UserService {
         } else {
             throw new InvalidCredentialsException("Old email not valid");
         }
-        userDao.save(user);
+        userRepository.save(user);
 
         return user;
     }
@@ -145,28 +140,23 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void save(User user) {
-        userDao.save(user);
+        userRepository.save(user);
     }
 
     @Override
     @Transactional
     public void delete(User user) {
-        userDao.delete(user);
+        userRepository.delete(user);
     }
 
     @Override
     @Transactional
+    //TODO: alter to accept & search using email rather than username
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userDao.findUserByUsername(username);
+        User user = userRepository.findUserByUsername(username);
         if (user == null)
             throw new UsernameNotFoundException("Invalid username or password");
 
-        return new UserPrincipal(user);
-    }
-
-    private Collection<? extends GrantedAuthority> mapRolesToAuthorities(Collection<Role> roles) {
-        return roles.stream().map(role ->
-                new SimpleGrantedAuthority(role.getName()))
-            .collect(Collectors.toList());
+        return user;
     }
 }

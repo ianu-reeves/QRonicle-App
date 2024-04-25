@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @CrossOrigin
@@ -29,8 +30,8 @@ public class TagController {
     }
 
     @GetMapping("/{tag}/items")
-    public ResponseEntity<List<Item>> getItemsByTag(@PathVariable Tag tag) {
-        List<Item> items = itemService.findItemsByTag(tag);
+    public ResponseEntity<Set<Item>> getItemsByTag(@PathVariable Tag tag) {
+        Set<Item> items = itemService.findItemsByTag(tag);
 
         return ResponseEntity.ok(items);
     }

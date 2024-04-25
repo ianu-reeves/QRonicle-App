@@ -1,17 +1,20 @@
 package com.qronicle.controller;
 
+import com.qronicle.entity.RefreshToken;
 import com.qronicle.entity.User;
+import com.qronicle.exception.MissingRefreshTokenException;
+import com.qronicle.exception.StaleRefreshTokenException;
 import com.qronicle.exception.UserAlreadyExistsException;
 import com.qronicle.model.AuthRequest;
 import com.qronicle.model.AuthResponse;
 import com.qronicle.model.UserForm;
 import com.qronicle.service.interfaces.TokenService;
 import com.qronicle.service.interfaces.UserService;
-import com.qronicle.util.JWTUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -19,23 +22,21 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
-import java.text.ParseException;
 
 @Controller
 @CrossOrigin
-@RequestMapping("/")
+@RequestMapping("/auth")
 public class AuthController {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
-    private final JWTUtil jwtUtil;
     private final TokenService tokenService;
     private final static Logger logger = LoggerFactory.getLogger(AuthController.class);
 
@@ -44,11 +45,9 @@ public class AuthController {
 
     public AuthController(
             UserService userService,
-            JWTUtil jwtUtil,
-            AuthenticationManager authenticationManager,
-            TokenService tokenService) {
+            TokenService tokenService,
+            AuthenticationManager authenticationManager) {
         this.userService = userService;
-        this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
     }
@@ -63,9 +62,9 @@ public class AuthController {
         // explicitly set ID on form to 0 in case an ID is passed with JSON request so new entry is created
         userForm.setId(0);
         User addedUser = userService.addUser(userForm);
-        UserDetails newUser = userService.loadUserByUsername(addedUser.getUsername());
-        String authToken = jwtUtil.generateToken(newUser);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse(authToken));
+        User newUser = (User) userService.loadUserByUsername(addedUser.getUsername());
+
+        return createAndStoreTokenCredentials(newUser);
     }
 
     @GetMapping("/login")
@@ -74,30 +73,58 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> authenticate(@RequestBody AuthRequest request) {
-        String username = request.getUsername();
+    public ResponseEntity<AuthResponse> authenticate(@RequestBody AuthRequest authRequest, HttpServletRequest request) {
+        String username = authRequest.getUsername();
+
+        // ensure credentials are valid
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, request.getPassword()));
+                    new UsernamePasswordAuthenticationToken(username, authRequest.getPassword()));
         } catch (BadCredentialsException e) {
             throw new BadCredentialsException("Invalid username or password", e);
         }
-        UserDetails userDetails = userService.loadUserByUsername(username);
-        String token = jwtUtil.generateToken(userDetails);
-        System.out.println("Generated token for " +username + " with value: " + token);
 
-        return ResponseEntity.ok(new AuthResponse(token));
+        User user =  (User) userService.loadUserByUsername(username);
+        String accessToken = tokenService.extractAccessToken(request);
+        // return response without refreshing credentials if user already has valid access token
+        if (accessToken != null && tokenService.isNotExpired(accessToken)) {
+            return ResponseEntity
+                .ok()
+                .body(new AuthResponse(
+                    user.getUsername(),
+                    user.getAuthorities(),
+                    System.currentTimeMillis()
+                ));
+        }
+
+        return createAndStoreTokenCredentials(user);
     }
 
-    // Endpoint for authenticating with oAuth2 login.
-    // Returns a ResponseEntity containing an access token authorizing use of resource server API endpoints
-    @PostMapping("/authenticate")
-    public ResponseEntity<AuthResponse> getToken(Authentication auth) {
-        logger.info("Token requested for user: " + auth.getName());
-        String token = tokenService.generateToken(auth);
-        logger.info("Token granted for user " + auth.getName());
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refreshCredentials(HttpServletRequest request) {
+        final String STALE_REFRESH_MSG = "Refresh token expired. Please log in again.";
+        final String MISSING_REFRESH_MSG = "No refresh token was found in the request. Please retry or log in again if the issue persists";
+        String refreshToken = tokenService.extractRefreshToken(request);
+        // check token in request is valid
+        if (refreshToken == null) {
+            throw new MissingRefreshTokenException(MISSING_REFRESH_MSG);
+        }
+        RefreshToken oldToken = tokenService.findRefreshTokenByValue(refreshToken);
+        if (!tokenService.isNotExpired(refreshToken)) {
+            throw new StaleRefreshTokenException(STALE_REFRESH_MSG);
+        }
 
-        return ResponseEntity.ok(new AuthResponse(token));
+        String username = tokenService.extractUsernameFromToken(refreshToken);
+        User user = (User) userService.loadUserByUsername(username);
+
+        // revoke all refresh tokens in DB if token being presented is not in DB (i.e. is stale)
+        if (oldToken == null) {
+            tokenService.invalidateUserTokens(user);
+            throw new StaleRefreshTokenException(STALE_REFRESH_MSG);
+        }
+
+        ResponseEntity<AuthResponse> response = createAndStoreTokenCredentials(user);
+        return response;
     }
 
     @GetMapping("/secure")
@@ -106,19 +133,7 @@ public class AuthController {
     }
 
     @GetMapping("/test")
-    public void loginSuccess() throws ParseException {
-//        OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
-//                authenticationToken.getAuthorizedClientRegistrationId(),
-//                authenticationToken.getName());
-//
-//        String userEndpointUri = client.getClientRegistration().getProviderDetails().getUserInfoEndpoint().getUri();
-
-//        if (!userEndpointUri.isEmpty()) {
-//            RestTemplate restTemplate = new RestTemplate();
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + client.getAccessToken());
-//        }
-
+    public void loginSuccess() {
         Authentication authenticationToken = SecurityContextHolder.getContext().getAuthentication();
         OAuth2AuthenticationToken oAuth2AuthenticationToken = (OAuth2AuthenticationToken) authenticationToken;
         System.out.println(oAuth2AuthenticationToken.isAuthenticated());
@@ -133,5 +148,30 @@ public class AuthController {
                 "oAuth2User attributes: " + user.getAttributes() + "\n" +
                 "SecurtyContextHolder attributes: " + SecurityContextHolder.getContext().getAuthentication());
         return ResponseEntity.ok(user.getAttributes());
+    }
+
+    /**
+     * Convenience method for creating access/ refresh tokens & associating them with the session. The refresh token
+     * is also stored in the database.
+     * @param user {@link User} to generate credentials for
+     * @return {@link ResponseEntity} containing the access & refresh headers as well as the {@link AuthResponse}
+     */
+    private ResponseEntity<AuthResponse> createAndStoreTokenCredentials(User user) {
+        ResponseCookie newAccessCookie = tokenService.createAccessCookie(user);
+        tokenService.invalidateUserTokens(user);
+        RefreshToken newRefreshToken = tokenService.createRefreshToken(user);
+        tokenService.addRefreshToken(newRefreshToken);
+        ResponseCookie newRefreshCookie = tokenService.createRefreshCookie(newRefreshToken.getTokenValue());
+
+        ResponseEntity<AuthResponse> response = ResponseEntity
+            .ok()
+            .header(HttpHeaders.SET_COOKIE, newAccessCookie.toString())
+            .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
+            .body(new AuthResponse(
+                user.getUsername(),
+                user.getAuthorities(),
+                System.currentTimeMillis()
+            ));
+        return response;
     }
 }

@@ -8,6 +8,7 @@ import com.qronicle.model.UserForm;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.util.List;
+//TODO: Replace username search with email search in service & repository
 
 public interface UserService extends UserDetailsService {
     User getCurrentlyAuthenticatedUser();

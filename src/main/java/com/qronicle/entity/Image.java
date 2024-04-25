@@ -1,11 +1,14 @@
 package com.qronicle.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.qronicle.serializer.ImageSerializer;
 
 import javax.persistence.*;
 import java.util.Objects;
 
 @Entity
+@JsonSerialize(using = ImageSerializer.class)
 public class Image {
     public Image() {
     }
@@ -34,6 +37,7 @@ public class Image {
     private Item item;
 
     @Column(name = "file_name")
+    @JsonIgnore
     private String fileName;
 
     @Column(name = "original_file_name")

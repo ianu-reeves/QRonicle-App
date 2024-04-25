@@ -1,9 +1,6 @@
 package com.qronicle.advice;
 
-import com.qronicle.exception.UserAlreadyExistsException;
-import com.qronicle.exception.GenericErrorResponse;
-import com.qronicle.exception.UserNotFoundException;
-import com.qronicle.exception.ValidationErrorResponse;
+import com.qronicle.exception.*;
 import io.jsonwebtoken.JwtException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -73,6 +70,18 @@ public class ApplicationExceptionHandler {
                 System.currentTimeMillis());
 
         return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(MissingRefreshTokenException.class)
+    public ResponseEntity<GenericErrorResponse> handleMissingRefreshTokenException(MissingRefreshTokenException e) {
+        return new ResponseEntity<>(
+            new GenericErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                e.getMessage(),
+                System.currentTimeMillis()
+            ),
+            HttpStatus.UNAUTHORIZED
+        );
     }
 
     @ExceptionHandler

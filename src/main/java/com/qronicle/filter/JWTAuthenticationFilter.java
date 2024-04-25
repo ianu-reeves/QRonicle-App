@@ -1,7 +1,8 @@
 package com.qronicle.filter;
 
+import com.qronicle.service.interfaces.TokenService;
 import com.qronicle.service.interfaces.UserService;
-import com.qronicle.util.JWTUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,42 +20,35 @@ import java.io.IOException;
 @Component
 public class JWTAuthenticationFilter extends OncePerRequestFilter {
     private final UserService userService;
-    private final JWTUtil jwtUtil;
+    private final TokenService tokenService;
 
-    public JWTAuthenticationFilter(UserService userService, JWTUtil jwtUtil) {
+    @Value("${jwt.lifetime.refresh}")
+    private int refreshLifetime;
+
+    public JWTAuthenticationFilter(UserService userService, TokenService tokenService) {
         this.userService = userService;
-        this.jwtUtil = jwtUtil;
+        this.tokenService = tokenService;
     }
     @Override
     protected void doFilterInternal(
             HttpServletRequest req,
             HttpServletResponse resp,
             FilterChain chain) throws ServletException, IOException {
-
-        String token = jwtUtil.getTokenFromHeader(req);
-
-        if (token != null) {
-            String username = jwtUtil.getUsernameFromToken(token);
-
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // username present in token, but no auth attached to SecurityContext yet.
-                // get UserDetails to authenticate against
+        String accessToken = tokenService.extractAccessToken(req);
+        if (accessToken != null) {
+            String username = tokenService.extractUsernameFromToken(accessToken);
+            if (username != null) {
                 UserDetails userDetails = userService.loadUserByUsername(username);
-
-                if (jwtUtil.validate(token, userDetails)) {
-                    // token is valid; store new authentication in SecurityContext
+                if (tokenService.isNotExpired(accessToken)) {
+                    // access token is still valid; store authentication in SecurityContext
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                             userDetails, userDetails.getPassword(), userDetails.getAuthorities()
                     );
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 }
             }
         }
-
-
-        // allow FilterChain to move on to next filter
         chain.doFilter(req, resp);
     }
 }
