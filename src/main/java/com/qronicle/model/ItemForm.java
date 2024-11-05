@@ -1,5 +1,6 @@
 package com.qronicle.model;
 
+import com.qronicle.entity.*;
 import com.qronicle.enums.PrivacyStatus;
 
 import javax.validation.constraints.NotNull;

@@ -1,5 +1,6 @@
 package com.qronicle.advice;
 
+import com.qronicle.exception.*;
 import io.jsonwebtoken.JwtException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Value;
