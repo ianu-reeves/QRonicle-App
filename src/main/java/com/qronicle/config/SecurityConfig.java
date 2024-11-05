@@ -7,7 +7,6 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.qronicle.filter.JWTAuthenticationFilter;
-import com.qronicle.security.UnauthorizedAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -22,7 +21,6 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -33,6 +31,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -61,7 +60,6 @@ import java.util.stream.Collectors;
 public class SecurityConfig {
 
     private final Environment env;
-    private final LoginAuthenticationHandler loginAuthenticationHandler;
 
     @Autowired
     private JWTAuthenticationFilter jwtAuthenticationFilter;
@@ -70,7 +68,7 @@ public class SecurityConfig {
     private UserDetailsService userDetailsService;
 
     @Autowired
-    private UnauthorizedAuthenticationEntryPoint authenticationEntryPoint;
+    private JwtAuthenticationEntryPoint authenticationEntryPoint;
 
     private static final List<String> oAuthClients = Arrays.asList("google", "github");
     private static final String CLIENT_PROPERTY_KEY = "spring.security.oauth2.client.registration.";
@@ -84,11 +82,8 @@ public class SecurityConfig {
     @Autowired
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
-    public SecurityConfig(
-            Environment env,
-            LoginAuthenticationHandler loginAuthenticationHandler) {
+    public SecurityConfig(Environment env) {
         this.env = env;
-        this.loginAuthenticationHandler = loginAuthenticationHandler;
     }
 
     @Bean
@@ -140,75 +135,82 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
-                "Accept", "Authorization", "X-Requested-With",
-                "Access-Control-Request-Method", "Access-Control-Request-Headers","Access-Control-Allow-Headers"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Origin",
+                "Access-Control-Allow-Origin",
+                "Content-Type",
+                "Accept",
+                "Authorization",
+                "X-Requested-With",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "Access-Control-Allow-Headers"));
         configuration.addAllowedOrigin("http://localhost:3000");
         configuration.setAllowCredentials(true);
         configuration.setAllowedMethods(Arrays.asList("Access-Control-Allow-Methods",
                 "GET", "POST", "PUT", "DELETE", "OPTIONS"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/cookielogin", configuration);
+        source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }
 
-    // SecurityFilterChain applied for authentication/ registration requests
+    // SecurityFilterChain applied to requests made to resource server
     @Bean
     @Order(1)
-    public SecurityFilterChain oauth2AuthenticationSecurityFilterChain(HttpSecurity http) throws Exception{
-        http.authorizeRequests(authorizeRequests ->
-            authorizeRequests   // configure request authorization handling
-                    .antMatchers("/authenticate", "/login", "/register/**", "/*.css", "/js/**")
-                    .permitAll()
-//                    .antMatchers(HttpMethod.OPTIONS).permitAll()
-//                    .antMatchers(HttpMethod.GET, "/secure/**").hasAnyAuthority("ROLE_USER")
-//                    .antMatchers(HttpMethod.GET, "/items/**", "/files/**", "/users/**").permitAll()
-//                    .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
-//                    .anyRequest().authenticated()
-                )
-                //TODO: Investigate why this causes oauth to fail
-//                .exceptionHandling(configurer ->
-//                        configurer.authenticationEntryPoint(authenticationEntryPoint))
-                .formLogin()
-                .loginPage("/login")
-                .loginProcessingUrl("/process").and()
-                .csrf().disable()
-                .cors(cors -> {
-                    cors.configurationSource(corsConfigurationSource());
-                })
-                .sessionManagement(
-                    session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .authenticationProvider(authenticationProvider())
-                //.httpBasic().and()
-                .oauth2Login()
-                .loginPage("/login")
-                .successHandler(oAuth2AuthenticationSuccessHandler)
-                .clientRegistrationRepository(clientRegistrationRepository())
-                .authorizedClientService(authorizedClientService());
+    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .antMatcher("/api/v1/**")
+            .authorizeRequests(authorizeRequests -> authorizeRequests
+                .antMatchers(HttpMethod.OPTIONS).permitAll()
+                .antMatchers(HttpMethod.GET, "/auth/secure/**").hasAnyAuthority("ROLE_USER")
+                .antMatchers("/api/v1/test/**").hasRole("USER")
+                .antMatchers(HttpMethod.GET, "/tags/**", "/api/v1/items/**", "/files/**", "/users/**").hasAnyAuthority("ROLE_USER")
+                .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
+            .anyRequest().authenticated()
+            )
+            .exceptionHandling(configurer ->
+                configurer.authenticationEntryPoint(authenticationEntryPoint))
+            .csrf().disable()
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and();
+//            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
 
         return http.build();
     }
 
-    // SecurityFilterChain applied to requests made to resource server
+    // SecurityFilterChain applied for authentication/ registration requests
     @Bean
     @Order(2)
-    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeRequests(authorizeRequests ->
-            authorizeRequests
-                .antMatchers(HttpMethod.OPTIONS).permitAll()
-                .antMatchers(HttpMethod.GET, "/auth/secure/**").hasAnyAuthority("ROLE_USER")
-                .antMatchers(HttpMethod.GET,  "/test", "/tags/**", "/items/**", "/files/**", "/users/**").permitAll()
-                .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
+    public SecurityFilterChain oauth2AuthenticationSecurityFilterChain(HttpSecurity http) throws Exception{
+        http
+            .authorizeRequests(authorizeRequests -> authorizeRequests   // configure request authorization handling
+                    .antMatchers("/auth/signout").hasRole("USER")
+                    .antMatchers("/auth/**", "/*.css", "/js/**").permitAll()
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(configurer ->
+                configurer.authenticationEntryPoint(authenticationEntryPoint))
             .csrf().disable()
-            .cors().and()
-            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
-            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .formLogin()
+            .loginPage("/auth/login")
+            .loginProcessingUrl("/process").and()
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .authenticationProvider(authenticationProvider())
+            .oauth2Login()
+                .authorizationEndpoint().authorizationRequestResolver(
+                    new DefaultOAuth2AuthorizationRequestResolver(
+                        clientRegistrationRepository(),
+                        "/auth/oauth2/authorization"
+                )).and()
+            .loginPage("/auth/login")
+                .defaultSuccessUrl("http://localhost:3000/")
+            .successHandler(oAuth2AuthenticationSuccessHandler)
+            .clientRegistrationRepository(clientRegistrationRepository())
+            .authorizedClientService(authorizedClientService());
 
         return http.build();
     }
@@ -258,6 +260,17 @@ public class SecurityConfig {
         }
 
         return clientRegistration;
+    }
+
+    //TODO: get this to create list of strings with security prefix prepended to use in authorizing requests
+    private String[] getApiWhitelist() {
+        String[] allowedEndpoints = {"/items", "/tags", "/files", "/users"};
+        String prefix = env.getProperty("app.api.v1.prefix");
+        for (String endpoint : allowedEndpoints) {
+            endpoint = prefix + endpoint;
+        }
+        System.out.println(allowedEndpoints);
+        return allowedEndpoints;
     }
 
 }

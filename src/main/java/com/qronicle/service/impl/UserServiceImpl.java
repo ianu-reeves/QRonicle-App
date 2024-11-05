@@ -70,7 +70,7 @@ public class UserServiceImpl implements UserService {
         return userRepository.findUserByEmail(email);
     }
 
-    // Maps data transfer object representing User to a User object & saves it
+    // Maps dto representing User to a User object & saves it
     @Override
     @Transactional
     public User addUser(UserForm userForm) {
@@ -81,7 +81,10 @@ public class UserServiceImpl implements UserService {
             userForm.getLastName(),
             userForm.getEmail(),
             null,
-            userForm.getPrivacyStatus()
+            userForm.getPrivacyStatus(),
+            userForm.getProvider(),
+            userForm.getProviderId(),
+            false   // Verification status false when first added
         );
         Role defaultRole = roleRepository.findRoleByName("ROLE_USER");
         user.addRole(defaultRole);
@@ -112,7 +115,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User changePassword(ChangePasswordForm form, String username) {
-        User user = findUserByUsername(username);
+        User user = (User) loadUserByUsername(username);
         if (encoder.matches(form.getOldPassword(), user.getPassword())) {
             user.setPassword(encoder.encode(form.getNewPassword()));
         } else {
@@ -126,7 +129,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User changeEmail(ChangeEmailForm form, String username) {
-        User user = findUserByUsername(username);
+        User user = (User) loadUserByUsername(username);
         if (form.getOldEmail().equals(user.getEmail())) {
             user.setEmail(form.getNewEmail());
         } else {
@@ -153,10 +156,6 @@ public class UserServiceImpl implements UserService {
     @Transactional
     //TODO: alter to accept & search using email rather than username
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findUserByUsername(username);
-        if (user == null)
-            throw new UsernameNotFoundException("Invalid username or password");
-
-        return user;
+        return userRepository.findUserByUsername(username);
     }
 }

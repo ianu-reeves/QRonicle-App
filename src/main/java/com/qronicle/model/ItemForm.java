@@ -1,11 +1,10 @@
 package com.qronicle.model;
 
-import com.qronicle.entity.*;
+import com.qronicle.enums.PrivacyStatus;
 
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Set;
 
 // TODO: remove date field & default to upload date when Item is created
@@ -19,7 +18,7 @@ public class ItemForm {
         this.name = item.getName();
         this.description = item.getDescription();
         this.user = item.getOwner();
-        this.date = item.getDate();
+        this.date = item.getUploadDate();
         this.tags = item.getTags();
         this.images = item.getImages();
         this.location = item.getLocation();
@@ -35,11 +34,13 @@ public class ItemForm {
     private String description;
     @NotNull
     private LocalDate date;
-    @Size(max = 10)
+    @Size(max = 50)
     private Set<Tag> tags;
     @Size(max = 10)
-    private List<Image> images;
+    private Set<Image> images;
     private Location location;
+    @NotNull
+    private PrivacyStatus privacyStatus;
 
     public long getId() {
         return id;
@@ -89,11 +90,11 @@ public class ItemForm {
         this.tags = tags;
     }
 
-    public List<Image> getImages() {
+    public Set<Image> getImages() {
         return images;
     }
 
-    public void setImages(List<Image> images) {
+    public void setImages(Set<Image> images) {
         this.images = images;
     }
 
@@ -103,5 +104,13 @@ public class ItemForm {
 
     public void setLocation(Location location) {
         this.location = location;
+    }
+
+    public PrivacyStatus getPrivacyStatus() {
+        return privacyStatus;
+    }
+
+    public void setPrivacyStatus(PrivacyStatus privacyStatus) {
+        this.privacyStatus = privacyStatus;
     }
 }

@@ -45,6 +45,8 @@ public class TokenServiceImpl implements TokenService {
 
     private TokenRepository tokenRepository;
 
+    private String REFRESH_ENDPOINT = "/auth/refresh";
+
     public TokenServiceImpl(TokenRepository tokenRepository) {
         this.tokenRepository = tokenRepository;
     }
@@ -103,7 +105,6 @@ public class TokenServiceImpl implements TokenService {
         return ResponseCookie
             .from(accessCookieName, tokenValue)
             .httpOnly(true)
-            .secure(true)
             .maxAge(accessTokenLifetime)
             .path("/")
             .build();
@@ -114,9 +115,28 @@ public class TokenServiceImpl implements TokenService {
         return ResponseCookie
             .from(refreshCookieName, tokenValue)
             .httpOnly(true)
-            .secure(true)
             .maxAge(refreshTokenLifetime)
-            .path("/auth/refresh")
+            .path(REFRESH_ENDPOINT)
+            .build();
+    }
+
+    @Override
+    public ResponseCookie createEmptyAccessCookie() {
+        return ResponseCookie
+            .from(refreshCookieName, "")
+            .httpOnly(true)
+            .maxAge(0)
+            .path(REFRESH_ENDPOINT)
+            .build();
+    }
+
+    @Override
+    public ResponseCookie createEmptyRefreshCookie() {
+        return ResponseCookie
+            .from(accessCookieName, "")
+            .httpOnly(true)
+            .maxAge(0)
+            .path("/")
             .build();
     }
 
@@ -131,32 +151,12 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public String extractAccessToken(HttpServletRequest request) {
-        String token = null;
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return null;
-        }
-        Optional<Cookie> accessCookie = Arrays.stream(request.getCookies()).filter(cookie ->
-                cookie.getName().equals(accessCookieName)).findFirst();
-        if (accessCookie.isPresent()) {
-            token = accessCookie.get().getValue();
-        }
-        return token;
+        return extractTokenByName(request, accessCookieName);
     }
 
     @Override
     public String extractRefreshToken(HttpServletRequest request) {
-        String token = null;
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return null;
-        }
-        Optional<Cookie> refreshCookie = Arrays.stream(request.getCookies()).filter(cookie ->
-                cookie.getName().equals(refreshCookieName)).findFirst();
-        if (refreshCookie.isPresent()) {
-            token = refreshCookie.get().getValue();
-        }
-        return token;
+        return extractTokenByName(request, refreshCookieName);
     }
 
     @Override
@@ -186,5 +186,19 @@ public class TokenServiceImpl implements TokenService {
     private SecretKey getSigningKey() {
         byte[] bytes = Decoders.BASE64.decode(key);
         return Keys.hmacShaKeyFor(bytes);
+    }
+
+    private String extractTokenByName(HttpServletRequest request, String cookieName) {
+        String token = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        Optional<Cookie> refreshCookie = Arrays.stream(request.getCookies()).filter(cookie ->
+                cookie.getName().equals(cookieName)).findFirst();
+        if (refreshCookie.isPresent()) {
+            token = refreshCookie.get().getValue();
+        }
+        return token;
     }
 }

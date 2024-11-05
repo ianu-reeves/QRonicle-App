@@ -43,8 +43,6 @@ public class FileServiceImpl implements FileService {
         this.imageRepository = imageRepository;
     }
 
-
-
     @Override
     public String storeFile(MultipartFile mp) {
         File file = convertMultipartToFile(mp);
@@ -71,7 +69,6 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public boolean deleteFile(Image image) {
         client.deleteObject(bucketName, image.getFileName());
-        imageRepository.delete(image);
         return true;
     }
 

@@ -13,6 +13,8 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.orm.hibernate5.HibernateTransactionManager;
 import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -134,6 +136,23 @@ public class AppConfig implements WebMvcConfigurer {
         resolver.setSuffix(".jsp");
 
         return resolver;
+    }
+
+    @Bean
+    public JavaMailSender javaMailSender() {
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        mailSender.setHost(env.getProperty("app.mail.host"));
+        mailSender.setPort(propToInt(env.getProperty("app.mail.port")));
+        mailSender.setUsername(env.getProperty("app.mail.sender.username"));
+        mailSender.setPassword(env.getProperty("app.mail.sender.password"));
+
+        Properties mailProperties = mailSender.getJavaMailProperties();
+        mailProperties.put("mail.transport.protocol", "smtp");
+        mailProperties.put("mail.smtp.auth", "true");
+        mailProperties.put("mail.smtp.starttls.enable", "true");
+        mailProperties.put("mail.debug", "true");
+
+        return mailSender;
     }
 
     // Identifies locations for CSS and JS resources

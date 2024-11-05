@@ -19,7 +19,7 @@ import java.util.List;
 @Validated
 @RestController
 @CrossOrigin
-@RequestMapping("/users")
+@RequestMapping("${app.api.v1.prefix}/users")
 public class UserController {
 
     @Autowired
@@ -52,16 +52,16 @@ public class UserController {
         return ResponseEntity.ok(tags);
     }
 
-
     @PreAuthorize("authentication.name == #user.username")
     @PutMapping
     public ResponseEntity<User> updateUser(@RequestBody User user) {
         User oldUser = userService.findUserByUsername(user.getUsername());
         if (oldUser == null) {
-            throw new UserNotFoundException("User with username '"
-                    + user.getUsername() + "' does not exist or could not be found");
+            throw new UserNotFoundException(
+                "User with username '" + user.getUsername() + "' does not exist or could not be found");
         }
         user.setId(oldUser.getId());
+        // password & email cannot be updated this way; dedicated methods exist
         user.setPassword(oldUser.getPassword());
         user.setEmail(oldUser.getEmail());
         userService.save(user);

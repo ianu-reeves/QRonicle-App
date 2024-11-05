@@ -91,11 +91,21 @@ public class Image {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Image image = (Image) o;
-        return id == image.id && fileSize == image.fileSize && Objects.equals(item, image.item) && Objects.equals(fileName, image.fileName) && Objects.equals(originalFileName, image.originalFileName);
+        return id == image.id && fileSize == image.fileSize && Objects.equals(fileName, image.fileName) && Objects.equals(originalFileName, image.originalFileName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, item, fileName, originalFileName, fileSize);
+        return Objects.hash(id, fileName, originalFileName, fileSize);
+    }
+
+    @Override
+    public String toString() {
+        return "Image{" +
+                "id=" + id +
+                ", fileName='" + fileName + '\'' +
+                ", originalFileName='" + originalFileName + '\'' +
+                ", fileSize=" + fileSize +
+                '}';
     }
 }

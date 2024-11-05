@@ -1,8 +1,8 @@
 package com.qronicle.advice;
 
-import com.qronicle.exception.*;
 import io.jsonwebtoken.JwtException;
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,6 +14,8 @@ import java.util.Map;
 
 @ControllerAdvice
 public class ApplicationExceptionHandler {
+    @Value("${app.upload.image.size}")
+    private int MAX_FILE_SIZE;
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<GenericErrorResponse> handleUserNotFoundException(UserNotFoundException e) {
@@ -84,11 +86,23 @@ public class ApplicationExceptionHandler {
         );
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<GenericErrorResponse> uploadTooLargeException(Exception e) {
+        return new ResponseEntity<>(
+            new GenericErrorResponse(
+                413,
+                "The maximum file size is " + MAX_FILE_SIZE + " bytes",
+                System.currentTimeMillis()),
+            HttpStatus.valueOf(413)
+        );
+    }
+
     @ExceptionHandler
     public ResponseEntity<GenericErrorResponse> handleBadRequest(Exception e) {
         boolean isConstraintViolation = e.getCause() instanceof ConstraintViolationException;
         boolean isJwtException = e.getCause() instanceof JwtException;
         String message = e.getMessage();
+        System.out.println(e);
         if (isConstraintViolation) {
             message = "There was an error processing your request. Please ensure the data you submitted is valid";
         }

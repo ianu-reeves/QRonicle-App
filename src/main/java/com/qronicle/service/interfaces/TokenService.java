@@ -17,6 +17,8 @@ public interface TokenService {
     ResponseCookie createAccessCookie(User user);
     // TODO: Refactor to build with String so as to base cookie on value stored in DB
     ResponseCookie createRefreshCookie(String tokenValue);
+    ResponseCookie createEmptyAccessCookie();
+    ResponseCookie createEmptyRefreshCookie();
     RefreshToken createRefreshToken(User user);
     String extractAccessToken(HttpServletRequest request);
     String extractRefreshToken(HttpServletRequest request);

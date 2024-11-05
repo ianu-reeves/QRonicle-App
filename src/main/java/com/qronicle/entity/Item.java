@@ -1,11 +1,14 @@
 package com.qronicle.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.qronicle.enums.PrivacyStatus;
+import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.DynamicUpdate;
 
 import javax.persistence.*;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 @Entity
 @DynamicUpdate
@@ -14,20 +17,21 @@ public class Item {
     public Item() {
     }
 
-    public Item(User owner, String name, String description, LocalDate date, Location location) {
+    public Item(User owner, String name, String description, LocalDate uploadDate, Location location, PrivacyStatus privacyStatus) {
         this.owner = owner;
         this.name = name;
         this.description = description;
-        this.date = date;
+        this.uploadDate = uploadDate;
         this.location = location;
-        this.ownerName = owner.getUsername();
+        this.privacyStatus = privacyStatus != null ? privacyStatus : PrivacyStatus.PUBLIC;
     }
 
-    public Item(long id, String name, String description, LocalDate date) {
+    public Item(long id, String name, String description, LocalDate uploadDate, PrivacyStatus privacyStatus) {
         this.id = id;
         this.name = name;
         this.description = description;
-        this.date = date;
+        this.uploadDate = uploadDate;
+        this.privacyStatus = privacyStatus != null ? privacyStatus : PrivacyStatus.PUBLIC;
     }
 
     @Id
@@ -37,11 +41,7 @@ public class Item {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "owner_id")
-    @JsonIgnore
     private User owner;
-
-    @Transient
-    private String ownerName;
 
     @Column(name = "name")
     private String name;
@@ -49,13 +49,19 @@ public class Item {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "date")
-    private LocalDate date;
+    @Column(name = "upload_date", updatable = false)
+    private LocalDate uploadDate;
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "item", orphanRemoval = true)
-    private List<Image> images = new ArrayList<>();
-
-    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH, CascadeType.DETACH})
+    private Set<Image> images = new HashSet<>();
+    @ManyToMany(
+        fetch = FetchType.LAZY,
+        cascade = {
+            CascadeType.MERGE,
+            CascadeType.PERSIST,
+        }
+    )
+    @Cascade(value = org.hibernate.annotations.CascadeType.SAVE_UPDATE)
     @JoinTable(
             name = "item_tag",
             joinColumns = @JoinColumn(name = "item_id"),
@@ -66,6 +72,10 @@ public class Item {
     @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST})
     @JoinColumn(name = "location_id")
     private Location location;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "privacy_status")
+    private PrivacyStatus privacyStatus;
 
     public long getId() {
         return id;
@@ -81,13 +91,6 @@ public class Item {
 
     public void setOwner(User owner) {
         this.owner = owner;
-    }
-
-    public String getOwnerName() {
-        if (ownerName == null) {
-            ownerName = owner.getUsername();
-        }
-        return ownerName;
     }
 
     public String getName() {
@@ -106,12 +109,12 @@ public class Item {
         this.description = description;
     }
 
-    public LocalDate getDate() {
-        return date;
+    public LocalDate getUploadDate() {
+        return uploadDate;
     }
 
-    public void setDate(LocalDate date) {
-        this.date = date;
+    public void setUploadDate(LocalDate date) {
+        this.uploadDate = date;
     }
 
     public Image generateQRImage() {
@@ -119,22 +122,22 @@ public class Item {
         return null;
     }
 
-    public List<Image> getImages() {
+    public Set<Image> getImages() {
         return images;
     }
 
-    public void setImages(List<Image> images) {
+    public void setImages(Set<Image> images) {
         this.images = images;
     }
 
     public void addImage(Image image) {
-        this.images.add(image);
         image.setItem(this);
+        this.images.add(image);
     }
 
     public void removeImage(Image image) {
-        this.images.remove(image);
         image.setItem(null);
+        this.images.remove(image);
     }
 
     public Set<Tag> getTags() {
@@ -163,17 +166,35 @@ public class Item {
         this.location = location;
     }
 
+    public PrivacyStatus getPrivacyStatus() {
+        return privacyStatus;
+    }
+
+    public void setPrivacyStatus(PrivacyStatus privacyStatus) {
+        this.privacyStatus = privacyStatus;
+    }
+
     @Override
     public boolean equals(Object o) {
-
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Item item = (Item) o;
-        return id == item.id && Objects.equals(owner, item.owner) && Objects.equals(ownerName, item.ownerName) && Objects.equals(name, item.name) && Objects.equals(description, item.description) && Objects.equals(date, item.date) && Objects.equals(location, item.location);
+        return id == item.id;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, owner, ownerName, name, description, date, location);
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return "Item{" +
+                "id=" + id +
+                ", owner=" + owner +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", location=" + location +
+                '}';
     }
 }

@@ -21,7 +21,6 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    @JsonIgnore
     private long id;
 
     @Column
@@ -61,17 +60,20 @@ public class User implements UserDetails {
     @Column(name = "provider_id")
     private String providerId;
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
-            name = "users_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
+        name = "users_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
 
     @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JsonIgnore
     private List<Item> items = new ArrayList<>();
+
+    @Column(name = "is_verified")
+    private Boolean isVerified = false;     // default to false
 
     public User() {
         this.signupDate = LocalDate.now();
@@ -89,16 +91,29 @@ public class User implements UserDetails {
         this.signupDate = LocalDate.now();
     }
 
-    public User(long id, String username, String firstName, String lastName, String email, String bio, UserType userType, PrivacyStatus privacyStatus) {
-        this.id = id;
+    public User(
+        String username,
+        String password,
+        String firstName,
+        String lastName,
+        String email,
+        UserType userType,
+        PrivacyStatus privacyStatus,
+        AccountProvider provider,
+        String providerId,
+        Boolean isVerified
+    ) {
         this.username = username;
+        this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
-        this.bio = bio;
         this.userType = userType;
         this.privacyStatus = privacyStatus;
+        this.accountProvider = provider;
+        this.providerId = providerId;
         this.signupDate = LocalDate.now();
+        this.isVerified = isVerified;
     }
 
     public long getId() {
@@ -229,27 +244,40 @@ public class User implements UserDetails {
         items.remove(item);
     }
 
+    public Boolean isVerified() {
+        return isVerified;
+    }
+
+    public void setVerified(Boolean verified) {
+        isVerified = verified;
+    }
+
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return mapRolesToAuthorities(this.roles);
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonLocked() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
+    @JsonIgnore
     public boolean isEnabled() {
         return true;
     }
@@ -280,7 +308,12 @@ public class User implements UserDetails {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return id == user.id && firstName.equals(user.firstName) && lastName.equals(user.lastName) && email.equals(user.email) && Objects.equals(bio, user.bio) && privacyStatus == user.privacyStatus && Objects.equals(items, user.items);
+        return id == user.id
+                && firstName.equals(user.firstName)
+                && lastName.equals(user.lastName)
+                && email.equals(user.email)
+                && Objects.equals(bio, user.bio)
+                && privacyStatus == user.privacyStatus;
     }
 
     @Override

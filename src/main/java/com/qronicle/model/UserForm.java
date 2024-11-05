@@ -10,8 +10,8 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
 @FieldMatch.List({
-        @FieldMatch(firstField = "password", secondField = "matchingPassword", message = "Passwords must match"),
-        @FieldMatch(firstField = "email", secondField = "matchingEmail", message = "Emails must match")
+        @FieldMatch(firstField = "password", secondField = "confirmPassword", message = "Passwords must match"),
+        @FieldMatch(firstField = "email", secondField = "confirmEmail", message = "Emails must match")
 })
 public class UserForm {
 
@@ -22,11 +22,11 @@ public class UserForm {
         this.id = user.getId();
         this.username = user.getUsername();
         this.password = user.getPassword();
-        this.matchingPassword = user.getPassword();
+        this.confirmPassword = user.getPassword();
         this.firstName = user.getFirstName();
         this.lastName = user.getLastName();
         this.email = user.getEmail();
-        this.matchingEmail = user.getEmail();
+        this.confirmEmail = user.getEmail();
         this.userType = user.getUserType().toString();
         this.privacyStatus = user.getPrivacyStatus();
         this.providerId = user.getUsername();
@@ -44,7 +44,7 @@ public class UserForm {
 
     @NotNull
     @Size(min = 10, max = 50)
-    private String matchingPassword;
+    private String confirmPassword;
 
     @Size(max = 50)
     private String firstName;
@@ -58,7 +58,7 @@ public class UserForm {
 
     @NotNull
     @ValidEmail
-    private String matchingEmail;
+    private String confirmEmail;
 
     //@NotNull
     //@ValidUserType
@@ -70,7 +70,6 @@ public class UserForm {
     @NotNull
     private AccountProvider provider = AccountProvider.LOCAL;
 
-    @NotNull
     private String providerId;
 
     public long getId() {
@@ -97,12 +96,12 @@ public class UserForm {
         this.password = password;
     }
 
-    public String getMatchingPassword() {
-        return matchingPassword;
+    public String getConfirmPassword() {
+        return confirmPassword;
     }
 
-    public void setMatchingPassword(String matchingPassword) {
-        this.matchingPassword = matchingPassword;
+    public void setConfirmPassword(String confirmPassword) {
+        this.confirmPassword = confirmPassword;
     }
 
     public String getFirstName() {
@@ -129,12 +128,12 @@ public class UserForm {
         this.email = email;
     }
 
-    public String getMatchingEmail() {
-        return matchingEmail;
+    public String getConfirmEmail() {
+        return confirmEmail;
     }
 
-    public void setMatchingEmail(String matchingEmail) {
-        this.matchingEmail = matchingEmail;
+    public void setConfirmEmail(String confirmEmail) {
+        this.confirmEmail = confirmEmail;
     }
 
     public String getUserType() {

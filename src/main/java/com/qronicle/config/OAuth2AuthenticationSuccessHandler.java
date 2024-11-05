@@ -1,6 +1,8 @@
 package com.qronicle.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qronicle.entity.User;
+import com.qronicle.model.AuthResponse;
 import com.qronicle.model.OAuth2UserDto;
 import com.qronicle.service.interfaces.CustomOAuth2UserService;
 import com.qronicle.service.interfaces.UserService;
@@ -34,7 +36,7 @@ public class OAuth2AuthenticationSuccessHandler extends SavedRequestAwareAuthent
         OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
 
         String email = customOAuth2UserService.extractEmailFromToken(token);
-        User user = userService.findUserByEmail(email);
+        User user = (User) userService.loadUserByUsername(email);
         if (user == null) {
             OAuth2UserDto oAuth2UserDto = customOAuth2UserService.convertOAuth2TokenToUserDto(token);
             try {
@@ -43,10 +45,11 @@ public class OAuth2AuthenticationSuccessHandler extends SavedRequestAwareAuthent
                 System.out.println(e.getMessage());
             }
         }
+        // TODO: figure out how to redirect to source location instead of hardcoded target
         RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
-        redirectStrategy.sendRedirect(request, response, "http://localhost:3000");
-        System.out.println("User: " + user);
-
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.writeValue(response.getOutputStream(), new AuthResponse(user, System.currentTimeMillis()));
+        response.sendRedirect("http://localhost:3000");
         super.onAuthenticationSuccess(request, response, authentication);
     }
 }

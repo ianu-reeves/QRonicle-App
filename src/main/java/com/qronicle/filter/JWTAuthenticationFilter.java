@@ -2,7 +2,6 @@ package com.qronicle.filter;
 
 import com.qronicle.service.interfaces.TokenService;
 import com.qronicle.service.interfaces.UserService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,9 +20,6 @@ import java.io.IOException;
 public class JWTAuthenticationFilter extends OncePerRequestFilter {
     private final UserService userService;
     private final TokenService tokenService;
-
-    @Value("${jwt.lifetime.refresh}")
-    private int refreshLifetime;
 
     public JWTAuthenticationFilter(UserService userService, TokenService tokenService) {
         this.userService = userService;

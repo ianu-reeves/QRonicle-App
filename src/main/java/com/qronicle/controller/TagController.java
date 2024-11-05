@@ -12,7 +12,7 @@ import java.util.Set;
 
 @RestController
 @CrossOrigin
-@RequestMapping("/tags")
+@RequestMapping("${app.api.v1.prefix}/tags")
 public class TagController {
     private final TagService tagService;
     private final ItemService itemService;

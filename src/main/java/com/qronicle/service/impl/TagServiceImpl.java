@@ -20,6 +20,12 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    public Tag findTagByName(String name) {
+        return tagRepository.findTagByName(name);
+    }
+
+    @Override
+    @Transactional
     public List<Tag> getAll() {
         return tagRepository.getAll();
     }

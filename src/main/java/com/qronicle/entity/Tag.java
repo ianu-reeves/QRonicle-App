@@ -67,4 +67,11 @@ public class Tag {
     public int hashCode() {
         return Objects.hash(description);
     }
+
+    @Override
+    public String toString() {
+        return "Tag{" +
+                "description='" + description + '\'' +
+                '}';
+    }
 }
