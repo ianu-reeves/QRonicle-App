@@ -3,12 +3,12 @@ package com.qronicle.repository.impl;
 import com.qronicle.entity.Item;
 import com.qronicle.entity.Tag;
 import com.qronicle.entity.User;
+import com.qronicle.enums.SortMethod;
 import com.qronicle.repository.interfaces.ItemRepository;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
@@ -50,7 +50,6 @@ public class ItemRepositoryImpl implements ItemRepository {
         try {
             item = query.getSingleResult();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
         }
 
         return item;
@@ -61,6 +60,61 @@ public class ItemRepositoryImpl implements ItemRepository {
         Session session = sessionFactory.getCurrentSession();
         Query<Item> query = session.createQuery("FROM Item i LEFT JOIN FETCH i.tags t WHERE t=:tg", Item.class);
         query.setParameter("tg", tag);
+
+        return new HashSet<>(query.getResultList());
+    }
+
+    @Override
+    public Set<Item> userSearchByTermsAndTags(
+        Set<Tag> tags, String searchTerm, int pageSize, int page, SortMethod sortMethod, Boolean useAnd, User user
+    ) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<Item> idQuery = session
+            .createQuery(
+                "SELECT DISTINCT i " +
+                "FROM Item i " +
+                "LEFT JOIN i.tags t " +
+                "WHERE (i.owner = :user OR i.privacyStatus = 'PUBLIC') " +
+                getSearchQueryString(searchTerm, tags, useAnd) +
+                "ORDER BY i." + convertSortMethod(sortMethod),
+                Item.class)
+            .setFirstResult(pageSize * page)
+            .setMaxResults(pageSize)
+            .setParameter("user", user);
+        if (searchTerm != null) {
+            idQuery.setParameter("searchTerm", searchTerm);
+        }
+
+        if (!tags.isEmpty()) {
+            idQuery.setParameter("tags", tags);
+        }
+
+        Set<Item> results = new HashSet<>(idQuery.getResultList());
+        Query<Item> query = session.createQuery(
+                "FROM Item i " +
+                "LEFT JOIN FETCH i.tags " +
+                "LEFT JOIN FETCH i.images " +
+                "WHERE i IN :ids"
+            , Item.class)
+            .setParameter("ids", results);
+        return new HashSet<>(query.getResultList());
+    }
+
+    @Override
+    public Set<Item> getFullUserSearchResults(Set<Tag> tags, String searchTerm, Boolean useAnd) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<Item> query = session.createQuery(
+            "FROM Item i " +
+                "LEFT JOIN FETCH i.tags t " +
+                "WHERE i.privacyStatus = 'PUBLIC' " +
+                getSearchQueryString(searchTerm, tags, useAnd)
+            , Item.class);
+        if (searchTerm != null) {
+            query.setParameter("searchTerm", searchTerm);
+        }
+        if (!tags.isEmpty()) {
+            query.setParameter("tags", tags);
+        }
 
         return new HashSet<>(query.getResultList());
     }
@@ -83,9 +137,48 @@ public class ItemRepositoryImpl implements ItemRepository {
     }
 
     @Override
-    @Transactional
     public void delete(Item item) {
         Session session = sessionFactory.getCurrentSession();
         session.delete(item);
+    }
+
+    private String convertSortMethod(SortMethod sortMethod) {
+        String result;
+
+        switch (sortMethod) {
+            case DATE_ASC:
+                result = "uploadDate ASC";
+                break;
+            case NAME_ASC:
+                result = "name ASC";
+                break;
+            case NAME_DESC:
+                result = "name DESC";
+                break;
+            default:
+                return "uploadDate DESC";
+        }
+
+        return result;
+    }
+
+    private String getSearchQueryString(String searchTerm, Set<Tag> tags, Boolean useAnd) {
+        String query = "AND ";
+        if (searchTerm != null) {
+            query += "(LOWER(i.name) LIKE CONCAT('%', LOWER(:searchTerm), '%')" +
+                "OR LOWER(i.description) LIKE CONCAT('%', LOWER(:searchTerm), '%')) "
+            + (
+                !tags.isEmpty()
+                    ? useAnd
+                        ? "AND "
+                        : "OR "
+                    : ""
+            );
+        }
+        if (!tags.isEmpty()) {
+            query += " t in :tags ";
+        }
+
+        return query;
     }
 }

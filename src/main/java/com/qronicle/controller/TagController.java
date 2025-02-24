@@ -7,12 +7,11 @@ import com.qronicle.service.interfaces.TagService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Set;
 
 @RestController
 @CrossOrigin
-@RequestMapping("${app.api.v1.prefix}/tags")
+@RequestMapping("${app.api.prefix.v1}/tags")
 public class TagController {
     private final TagService tagService;
     private final ItemService itemService;
@@ -23,8 +22,15 @@ public class TagController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Tag>> getAll() {
-        List<Tag> tags = tagService.getAll();
+    public ResponseEntity<Set<Tag>> getAll() {
+        Set<Tag> tags = tagService.getAll();
+
+        return ResponseEntity.ok(tags);
+    }
+
+    @GetMapping("/{description}")
+    public ResponseEntity<Set<Tag>> searchTags(@PathVariable String description) {
+        Set<Tag> tags = tagService.searchTagsByName(description);
 
         return ResponseEntity.ok(tags);
     }

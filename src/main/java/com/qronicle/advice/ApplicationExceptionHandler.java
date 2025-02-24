@@ -103,7 +103,6 @@ public class ApplicationExceptionHandler {
         boolean isConstraintViolation = e.getCause() instanceof ConstraintViolationException;
         boolean isJwtException = e.getCause() instanceof JwtException;
         String message = e.getMessage();
-        System.out.println(e);
         if (isConstraintViolation) {
             message = "There was an error processing your request. Please ensure the data you submitted is valid";
         }

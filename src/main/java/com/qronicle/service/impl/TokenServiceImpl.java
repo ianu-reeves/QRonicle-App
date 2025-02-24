@@ -43,9 +43,9 @@ public class TokenServiceImpl implements TokenService {
     @Value("${jwt.secret}")
     private String key;
 
-    private TokenRepository tokenRepository;
+    private final TokenRepository tokenRepository;
 
-    private String REFRESH_ENDPOINT = "/auth/refresh";
+    private final String REFRESH_ENDPOINT = "/auth/refresh";
 
     public TokenServiceImpl(TokenRepository tokenRepository) {
         this.tokenRepository = tokenRepository;
@@ -60,14 +60,13 @@ public class TokenServiceImpl implements TokenService {
 
     // Analyze token signature using secret key & return all claims made in the JWT
     private Claims getAllClaimsFromToken(String token) {
-        Claims claims = Jwts
+
+        return Jwts
             .parser()
             .verifyWith(getSigningKey())
             .build()
             .parseSignedClaims(token)
             .getPayload();
-
-        return claims;
     }
 
     // Returns subject (i.e. username) present in token's claims
@@ -106,6 +105,8 @@ public class TokenServiceImpl implements TokenService {
             .from(accessCookieName, tokenValue)
             .httpOnly(true)
             .maxAge(accessTokenLifetime)
+            .sameSite("None")
+            .secure(true)
             .path("/")
             .build();
     }
@@ -116,6 +117,8 @@ public class TokenServiceImpl implements TokenService {
             .from(refreshCookieName, tokenValue)
             .httpOnly(true)
             .maxAge(refreshTokenLifetime)
+            .sameSite("None")
+            .secure(true)
             .path(REFRESH_ENDPOINT)
             .build();
     }
@@ -126,6 +129,8 @@ public class TokenServiceImpl implements TokenService {
             .from(refreshCookieName, "")
             .httpOnly(true)
             .maxAge(0)
+            .sameSite("None")
+            .secure(true)
             .path(REFRESH_ENDPOINT)
             .build();
     }
@@ -136,16 +141,19 @@ public class TokenServiceImpl implements TokenService {
             .from(accessCookieName, "")
             .httpOnly(true)
             .maxAge(0)
+            .sameSite("None")
+            .secure(true)
             .path("/")
             .build();
     }
 
     @Override
-    public RefreshToken createRefreshToken(User user) {
+    public RefreshToken createRefreshToken(User user, String userAgent) {
         return new RefreshToken(
             generateToken(user, refreshTokenLifetime),
             Instant.now().plusSeconds(refreshTokenLifetime),
-            user
+            user,
+            userAgent
         );
     }
 
@@ -179,8 +187,14 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     @Transactional
-    public void invalidateUserTokens(User user) {
-        tokenRepository.deleteAll(user);
+    public void invalidateAllUserTokens(User user) {
+        tokenRepository.deleteAllForUser(user);
+    }
+
+    @Override
+    @Transactional
+    public void invalidateDeviceTokens(User user, String userAgent) {
+        tokenRepository.deleteAllForDevice(user, userAgent);
     }
 
     private SecretKey getSigningKey() {

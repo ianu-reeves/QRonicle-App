@@ -1,7 +1,7 @@
 package com.qronicle.repository.interfaces;
 
 import com.qronicle.entity.User;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import com.qronicle.enums.AccountProvider;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ public interface UserRepository {
     User findUserById(int id);
     User findUserByUsername(String username);
     User findUserByEmail(String email);
-    User findUserByOAuth2UserRequest(OAuth2UserRequest request);
+    User findUserByProvider(String email, AccountProvider provider);
     void save(User user);
     void delete(User user);
 }

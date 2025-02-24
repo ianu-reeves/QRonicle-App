@@ -79,6 +79,9 @@ public class SecurityConfig {
     @Value("${jwt.rsa.key.private}")
     private RSAPrivateKey privateKey;
 
+    @Value("${app.frontend.rootUrl}")
+    private String FRONTEND_URL;
+
     @Autowired
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
@@ -145,10 +148,10 @@ public class SecurityConfig {
                 "Access-Control-Request-Method",
                 "Access-Control-Request-Headers",
                 "Access-Control-Allow-Headers"));
-        configuration.addAllowedOrigin("http://localhost:3000");
+        configuration.addAllowedOrigin(FRONTEND_URL);
         configuration.setAllowCredentials(true);
         configuration.setAllowedMethods(Arrays.asList("Access-Control-Allow-Methods",
-                "GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
 
@@ -163,11 +166,15 @@ public class SecurityConfig {
             .antMatcher("/api/v1/**")
             .authorizeRequests(authorizeRequests -> authorizeRequests
                 .antMatchers(HttpMethod.OPTIONS).permitAll()
-                .antMatchers(HttpMethod.GET, "/auth/secure/**").hasAnyAuthority("ROLE_USER")
-                .antMatchers("/api/v1/test/**").hasRole("USER")
-                .antMatchers(HttpMethod.GET, "/tags/**", "/api/v1/items/**", "/files/**", "/users/**").hasAnyAuthority("ROLE_USER")
-                .antMatchers(HttpMethod.POST, "/items/**", "/files/**", "/users/**").hasRole("USER")
-            .anyRequest().authenticated()
+                .antMatchers(
+                    "/api/v1/users/requestPasswordReset",
+                    "/api/v1/users/resetPassword",
+                    "/api/v1/users/validatePasswordReset/**"
+                ).permitAll()
+                .antMatchers(
+                    "/api/v1/tags/**", "/api/v1/items/**", "/api/v1/files/**", "/api/v1/users/**"
+                ).hasRole("USER")
+                .anyRequest().authenticated()
             )
             .exceptionHandling(configurer ->
                 configurer.authenticationEntryPoint(authenticationEntryPoint))
@@ -175,7 +182,6 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and();
-//            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
 
         return http.build();
     }
@@ -201,13 +207,12 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .authenticationProvider(authenticationProvider())
             .oauth2Login()
-                .authorizationEndpoint().authorizationRequestResolver(
-                    new DefaultOAuth2AuthorizationRequestResolver(
-                        clientRegistrationRepository(),
-                        "/auth/oauth2/authorization"
-                )).and()
+            .authorizationEndpoint().authorizationRequestResolver(
+                new DefaultOAuth2AuthorizationRequestResolver(
+                    clientRegistrationRepository(),
+                    "/auth/oauth2/authorization"
+            )).and()
             .loginPage("/auth/login")
-                .defaultSuccessUrl("http://localhost:3000/")
             .successHandler(oAuth2AuthenticationSuccessHandler)
             .clientRegistrationRepository(clientRegistrationRepository())
             .authorizedClientService(authorizedClientService());
@@ -261,16 +266,4 @@ public class SecurityConfig {
 
         return clientRegistration;
     }
-
-    //TODO: get this to create list of strings with security prefix prepended to use in authorizing requests
-    private String[] getApiWhitelist() {
-        String[] allowedEndpoints = {"/items", "/tags", "/files", "/users"};
-        String prefix = env.getProperty("app.api.v1.prefix");
-        for (String endpoint : allowedEndpoints) {
-            endpoint = prefix + endpoint;
-        }
-        System.out.println(allowedEndpoints);
-        return allowedEndpoints;
-    }
-
 }

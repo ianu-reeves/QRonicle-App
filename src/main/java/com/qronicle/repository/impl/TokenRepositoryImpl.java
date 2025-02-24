@@ -37,12 +37,21 @@ public class TokenRepositoryImpl implements TokenRepository {
     }
 
     @Override
-    public void deleteAll(User user) {
+    public void deleteAllForUser(User user) {
         Session session = sessionFactory.getCurrentSession();
         session
             .createQuery("DELETE FROM refresh_token WHERE sub=:user")
             .setParameter("user", user)
             .executeUpdate();
 
+    }
+
+    @Override
+    public void deleteAllForDevice(User user, String userAgent) {
+        Session session = sessionFactory.getCurrentSession();
+        session.createQuery("DELETE FROM refresh_token WHERE userAgent=:userAgent AND sub=:user")
+            .setParameter("userAgent", userAgent)
+            .setParameter("user", user)
+            .executeUpdate();
     }
 }

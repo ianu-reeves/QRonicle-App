@@ -40,7 +40,6 @@ public class VerificationTokenRepositoryImpl implements VerificationTokenReposit
         try {
             token = query.getSingleResult();
         } catch (Exception e) {
-//            System.out.println(e.getMessage());
         }
         return token;
     }

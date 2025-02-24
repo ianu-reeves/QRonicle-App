@@ -3,6 +3,7 @@ package com.qronicle.service.impl;
 import com.qronicle.entity.Item;
 import com.qronicle.entity.Tag;
 import com.qronicle.entity.User;
+import com.qronicle.enums.SortMethod;
 import com.qronicle.model.ItemForm;
 import com.qronicle.repository.interfaces.ItemRepository;
 import com.qronicle.service.interfaces.ItemService;
@@ -18,15 +19,17 @@ import java.util.Set;
 public class ItemServiceImpl implements ItemService {
     private final ItemRepository itemRepository;
 
+    private final static String PRIVACY_FILTER_RULES =
+        "filterObject.privacyStatus.toString() == 'PUBLIC'" +
+        "|| filterObject.owner.username == authentication.name";
+
     public ItemServiceImpl(ItemRepository itemRepository) {
         this.itemRepository = itemRepository;
     }
 
     @Override
     @Transactional
-    @PostFilter(
-        "filterObject.privacyStatus.toString() == 'PUBLIC'" +
-        "|| filterObject.owner.username == authentication.name")
+    @PostFilter(PRIVACY_FILTER_RULES)
     public List<Item> getAll() {
         return itemRepository.getAll();
     }
@@ -40,27 +43,36 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional
-    @PostFilter(
-        "filterObject.privacyStatus.toString() == 'PUBLIC'" +
-        "|| filterObject.owner.username == authentication.name")
+    @PostFilter(PRIVACY_FILTER_RULES)
     public Set<Item> findItemsByTag(Tag tag) {
         return itemRepository.findItemsByTag(tag);
     }
 
     @Override
     @Transactional
-    @PostFilter(
-        "filterObject.privacyStatus.toString() == 'PUBLIC'" +
-        "|| filterObject.owner.username == authentication.name")
+    public Set<Item> searchItemsByTermAndTags(
+        Set<Tag> tags, String searchTerm, int pageSize, int page, SortMethod sortMethod, Boolean useAnd, User user
+    ) {
+        return itemRepository.userSearchByTermsAndTags(tags, searchTerm, pageSize, page, sortMethod, useAnd, user);
+    }
+
+    @Override
+    @Transactional
+    @PostFilter(PRIVACY_FILTER_RULES)
+    public Set<Item> getFullSearchResults(Set<Tag> tags, String searchTerm, Boolean useAnd) {
+        return itemRepository.getFullUserSearchResults(tags, searchTerm, useAnd);
+    }
+
+    @Override
+    @Transactional
+    @PostFilter(PRIVACY_FILTER_RULES)
     public Set<Item> findItemsByUser(User user) {
         return itemRepository.findItemsByUser(user);
     }
 
     @Override
     @Transactional
-    @PreAuthorize(
-        "hasRole('USER')" +
-        "&& itemForm.user.username == authentication.name")
+    @PreAuthorize("hasRole('USER')")
     public Item addItem(ItemForm itemForm) {
         Item item = new Item(
                 itemForm.getUser(),

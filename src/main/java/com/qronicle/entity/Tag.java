@@ -72,6 +72,7 @@ public class Tag {
     public String toString() {
         return "Tag{" +
                 "description='" + description + '\'' +
+                ", firstUsed=" + firstUsed +
                 '}';
     }
 }

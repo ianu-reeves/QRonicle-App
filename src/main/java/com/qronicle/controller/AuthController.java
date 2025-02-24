@@ -4,44 +4,44 @@ import com.qronicle.entity.RefreshToken;
 import com.qronicle.entity.User;
 import com.qronicle.entity.VerificationToken;
 import com.qronicle.enums.AccountProvider;
+import com.qronicle.exception.InvalidVerificationCodeException;
 import com.qronicle.exception.MissingRefreshTokenException;
 import com.qronicle.exception.StaleRefreshTokenException;
 import com.qronicle.exception.UserAlreadyExistsException;
 import com.qronicle.model.AuthRequest;
 import com.qronicle.model.AuthResponse;
 import com.qronicle.model.UserForm;
+import com.qronicle.model.VerificationRequest;
 import com.qronicle.service.interfaces.MailService;
 import com.qronicle.service.interfaces.TokenService;
 import com.qronicle.service.interfaces.UserService;
 import com.qronicle.service.interfaces.VerificationTokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.io.IOException;
 import java.time.Instant;
-import java.util.Map;
 
 @Controller
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = {"${app.frontend.url}"}, allowCredentials = "true")
 @RequestMapping("/auth")
 public class AuthController {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final MailService mailService;
-    private final PasswordEncoder passwordEncoder;
     private final VerificationTokenService verificationTokenService;
     private final static Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final String VERIFICATION_EMAIL_BODY = "Welcome to QRonicle, the digital scrapbooking app!" +
@@ -49,26 +49,27 @@ public class AuthController {
         "\n\nCopy the verification code below and enter it in the app to verify your account. Your code expires in 5 minutes" +
         "\n\nYour verification code: ";
 
-    @Autowired
-    private OAuth2AuthorizedClientService authorizedClientService;
+    @Value("${app.frontend.rootUrl}")
+    private String FRONTEND_URL;
 
     public AuthController(
             UserService userService,
             AuthenticationManager authenticationManager,
             TokenService tokenService,
             MailService mailService,
-            PasswordEncoder passwordEncoder,
             VerificationTokenService verificationTokenService) {
         this.userService = userService;
         this.tokenService = tokenService;
         this.mailService = mailService;
         this.authenticationManager = authenticationManager;
-        this.passwordEncoder = passwordEncoder;
         this.verificationTokenService = verificationTokenService;
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody @Valid UserForm userForm) {
+    public ResponseEntity<AuthResponse> register(
+        @RequestBody @Valid UserForm userForm,
+        HttpServletRequest req
+    ) {
         User existingUser = (User) userService.loadUserByUsername(userForm.getUsername());
         if (existingUser != null) {
             throw new UserAlreadyExistsException("Username is not valid.");
@@ -88,39 +89,55 @@ public class AuthController {
         mailService.sendEmail(
             userForm.getEmail(),
             "QRonicle - Finish setting up your account",
-            VERIFICATION_EMAIL_BODY + token
+            "Hello, " + addedUser.getFirstName() + "! " + VERIFICATION_EMAIL_BODY + token
         );
         // TODO: add mail event here
 
-        return createAndStoreTokenCredentials(addedUser);
+        return createAndStoreTokenCredentials(addedUser, req);
     }
 
     @PostMapping(value = "/verifyRegistration", consumes = "application/json")
-    public ResponseEntity<?> verifyRegistration(@RequestBody Map<String, String> verificationCode, HttpServletRequest request) {
-        System.out.println(verificationCode.get("verificationCode"));
+    public ResponseEntity<?> verifyRegistration(
+            @RequestBody VerificationRequest verificationRequest,
+            HttpServletRequest request) {
         try {
             String accessToken = tokenService.extractAccessToken(request);
             String username = tokenService.extractUsernameFromToken(accessToken);
             User user = (User) userService.loadUserByUsername(username);
-            VerificationToken verificationToken = verificationTokenService.getVerificationTokenByValue(verificationCode.get("verificationCode"));
+
+            if (username.equals(user.getEmail())) {
+                if (verificationRequest.getUsername() == null) {
+                    throw new RuntimeException("Accounts created with third party credentials must have a username");
+                }
+                User existingUser = (User) userService.loadUserByUsername(verificationRequest.getUsername());
+                if (existingUser != null) {
+                    throw new UserAlreadyExistsException("Username already exists");
+                }
+                user.setUsername(verificationRequest.getUsername());
+            }
+            VerificationToken verificationToken = verificationTokenService.getVerificationTokenByValue(verificationRequest.getVerificationToken());
             if (verificationToken.getExpiry().isBefore(Instant.now())
                 || !verificationToken.getUser().equals(user)
             ) {
-                throw new RuntimeException();
+                throw new InvalidVerificationCodeException("");
             }
-            user.setVerified(true);
+
+            userService.verifyUser(user);
             userService.save(user);
             verificationTokenService.delete(verificationToken);
-            return createAndStoreTokenCredentials(user);
+            return createAndStoreTokenCredentials(user, request);
         } catch(Exception e) {
-            return ResponseEntity.status(403).body("Verification code was not valid.");
+            String exceptionReason = "No further information was provided by the server";
+            if (e instanceof UserAlreadyExistsException) {
+                exceptionReason = "Username already exists";
+            }
+            if (e instanceof InvalidVerificationCodeException) {
+                exceptionReason = "Verification code was malformed or expired";
+            }
+
+            return ResponseEntity.status(403).body("Verification was not successful: " + exceptionReason);
         }
     }
-
-//    @GetMapping("/test")
-//    public void test(HttpServletResponse response) throws IOException {
-//        System.out.println(verificationTokenService.generateVerificationToken());
-//    }
 
     @GetMapping("/reSendVerification")
     public ResponseEntity<?> reSendVerification(HttpServletRequest request) {
@@ -179,7 +196,7 @@ public class AuthController {
                 ));
         }
 
-        return createAndStoreTokenCredentials(user);
+        return createAndStoreTokenCredentials(user, request);
     }
 
     @PostMapping("/refresh")
@@ -201,11 +218,11 @@ public class AuthController {
 
         // revoke all refresh tokens in DB if token being presented is not in DB (i.e. is stale)
         if (oldToken == null) {
-            tokenService.invalidateUserTokens(user);
+            tokenService.invalidateAllUserTokens(user);
             throw new StaleRefreshTokenException(STALE_REFRESH_MSG);
         }
 
-        return createAndStoreTokenCredentials(user);
+        return createAndStoreTokenCredentials(user, request);
     }
 
     @PostMapping("/signout")
@@ -214,7 +231,7 @@ public class AuthController {
 
         String username = tokenService.extractUsernameFromToken(token);
         User user = (User) userService.loadUserByUsername(username);
-        tokenService.invalidateUserTokens(user);
+        tokenService.invalidateDeviceTokens(user, req.getHeader("User-Agent"));
         ResponseCookie emptyAccessCookie = tokenService.createEmptyAccessCookie();
         ResponseCookie emptyRefreshCookie = tokenService.createEmptyRefreshCookie();
 
@@ -225,16 +242,26 @@ public class AuthController {
                 .build();
     }
 
+
+    @GetMapping("/grantCredentials/{username}")
+    public void grantCredentials(HttpServletRequest request, HttpServletResponse response, @PathVariable String username) throws IOException {
+        User user = userService.findUserByUsername(username);
+
+        createAndStoreTokenCredentials(user, request);
+        response.sendRedirect(FRONTEND_URL);
+    }
+
     /**
      * Convenience method for creating access/ refresh tokens & associating them with the session. The refresh token
      * is also stored in the database.
      * @param user {@link User} to generate credentials for
      * @return {@link ResponseEntity} containing the access & refresh headers as well as the {@link AuthResponse}
      */
-    private ResponseEntity<AuthResponse> createAndStoreTokenCredentials(User user) {
+    private ResponseEntity<AuthResponse> createAndStoreTokenCredentials(User user, HttpServletRequest req) {
+        String userAgent = req.getHeader("User-Agent");
         ResponseCookie newAccessCookie = tokenService.createAccessCookie(user);
-        tokenService.invalidateUserTokens(user);
-        RefreshToken newRefreshToken = tokenService.createRefreshToken(user);
+        tokenService.invalidateDeviceTokens(user, userAgent);
+        RefreshToken newRefreshToken = tokenService.createRefreshToken(user, userAgent);
         tokenService.addRefreshToken(newRefreshToken);
         ResponseCookie newRefreshCookie = tokenService.createRefreshCookie(newRefreshToken.getTokenValue());
 
@@ -247,4 +274,5 @@ public class AuthController {
                 System.currentTimeMillis()
             ));
     }
+
 }

@@ -6,7 +6,6 @@ import com.qronicle.repository.interfaces.UserRepository;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,8 +28,7 @@ public class UserRepositoryImpl implements UserRepository {
         try {
             user = query.getSingleResult();
         } catch (Exception e) {
-             System.out.println(e.getMessage());
-         }
+        }
         return user;
     }
 
@@ -52,7 +50,6 @@ public class UserRepositoryImpl implements UserRepository {
         try {
             user = query.getSingleResult();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
         }
         return user;
     }
@@ -66,28 +63,25 @@ public class UserRepositoryImpl implements UserRepository {
 
         try {
             user = query.getSingleResult();
+            System.out.println("Found user: " + user);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.println("Encountered exception while fetching user: " + e.getMessage());
         }
         return user;
     }
 
     @Override
-    public User findUserByOAuth2UserRequest(OAuth2UserRequest request) {
+    public User findUserByProvider(String email, AccountProvider provider) {
         Session session = sessionFactory.getCurrentSession();
         User user = null;
-        AccountProvider provider = AccountProvider.valueOf(request.getClientRegistration().getRegistrationId());
-        String providerId = request.getClientRegistration().getRegistrationId();
-
-        Query<User> query = session.createQuery(
-        "FROM User u WHERE u.accountProvider=:provider AND u.providerId=:providerId", User.class);
+        Query<User> query = session.createQuery("FROM User u WHERE u.email=:email AND u.accountProvider=:provider", User.class);
+        query.setParameter("email", email);
         query.setParameter("provider", provider);
-        query.setParameter("providerId", providerId);
 
         try {
             user = query.getSingleResult();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+
         }
 
         return user;

@@ -300,6 +300,8 @@ public class User implements UserDetails {
                 ", signupDate=" + signupDate +
                 ", accountProvider=" + accountProvider +
                 ", providerId='" + providerId + '\'' +
+                ", roles=" + roles +
+                ", isVerified=" + isVerified +
                 '}';
     }
 

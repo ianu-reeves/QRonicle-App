@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @CrossOrigin
-@RequestMapping("${app.api.v1.prefix}/files")
+@RequestMapping("${app.api.prefix.v1}/files")
 public class FileController {
     private final FileService fileService;
 

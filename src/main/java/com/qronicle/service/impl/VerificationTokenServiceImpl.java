@@ -33,6 +33,7 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
     public String generateVerificationToken() {
         SecureRandom random = new SecureRandom();
 
+        // largest integer value representable by 6 hex digits
         return String.format("%06X", random.nextInt(16777216));
     }
 

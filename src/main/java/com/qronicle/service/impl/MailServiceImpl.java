@@ -25,6 +25,5 @@ public class MailServiceImpl implements MailService {
         message.setSubject(subj);
         message.setText(content);
         sender.send(message);
-        System.out.println("Message sent to " + to);
     }
 }

@@ -4,11 +4,12 @@ import com.qronicle.entity.Item;
 import com.qronicle.entity.Tag;
 import com.qronicle.entity.User;
 
-import java.util.List;
+import java.util.Set;
 
 public interface TagRepository {
     Tag findTagByName(String name);
-    List<Tag> getAll();
-    List<Tag> getTagsByUser(User user);
-    List<Tag> getTagsByItem(Item item);
+    Set<Tag> getAll();
+    Set<Tag> getTagsByUser(User user);
+    Set<Tag> getTagsByItem(Item item);
+    Set<Tag> searchTagsByName(String name);
 }

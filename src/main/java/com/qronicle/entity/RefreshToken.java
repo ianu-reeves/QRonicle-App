@@ -17,13 +17,17 @@ public class RefreshToken {
     @JoinColumn(name = "user_id")
     private User sub;
 
+    @Column(name = "user_agent")
+    private String userAgent;
+
     public RefreshToken() {
     }
 
-    public RefreshToken(String tokenValue, Instant expiry, User sub) {
+    public RefreshToken(String tokenValue, Instant expiry, User sub, String userAgent) {
         this.tokenValue = tokenValue;
         this.expiry = expiry;
         this.sub = sub;
+        this.userAgent = userAgent;
     }
 
     public String getTokenValue() {
@@ -50,16 +54,24 @@ public class RefreshToken {
         this.sub = sub;
     }
 
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RefreshToken that = (RefreshToken) o;
-        return Objects.equals(tokenValue, that.tokenValue) && Objects.equals(expiry, that.expiry) && Objects.equals(sub, that.sub);
+        return Objects.equals(tokenValue, that.tokenValue) && Objects.equals(sub, that.sub) && Objects.equals(userAgent, that.userAgent);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tokenValue, expiry, sub);
+        return Objects.hash(tokenValue, sub, userAgent);
     }
 }

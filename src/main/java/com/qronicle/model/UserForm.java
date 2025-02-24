@@ -5,6 +5,7 @@ import com.qronicle.enums.AccountProvider;
 import com.qronicle.enums.PrivacyStatus;
 import com.qronicle.validation.FieldMatch;
 import com.qronicle.validation.ValidEmail;
+import com.qronicle.validation.ValidUsername;
 
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
@@ -35,7 +36,7 @@ public class UserForm {
     private long id;
 
     @NotNull(message = "Please choose a username")
-    @Size(min = 3, max = 24)
+    @ValidUsername
     private String username;
 
     @NotNull

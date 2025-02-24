@@ -4,10 +4,12 @@ import com.qronicle.entity.Image;
 import com.qronicle.entity.Item;
 import com.qronicle.entity.Tag;
 import com.qronicle.entity.User;
+import com.qronicle.enums.SortMethod;
 import com.qronicle.exception.FileNotFoundException;
 import com.qronicle.exception.ItemNotFoundException;
 import com.qronicle.exception.UserNotFoundException;
 import com.qronicle.model.ItemForm;
+import com.qronicle.model.SearchResponse;
 import com.qronicle.service.interfaces.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -22,13 +24,14 @@ import javax.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Validated
 @CrossOrigin
 @RestController
-@RequestMapping("${app.api.v1.prefix}/items")
+@RequestMapping("${app.api.prefix.v1}/items")
 public class ItemController {
     private final ItemService itemService;
     private final UserService userService;
@@ -62,40 +65,45 @@ public class ItemController {
     }
 
     @GetMapping("/{id}/tags")
-    public ResponseEntity<List<Tag>> getTagsByItem(@PathVariable long id) {
+    public ResponseEntity<Set<Tag>> getTagsByItem(@PathVariable long id) {
         Item item = itemService.findItemById(id);
         if (item == null) {
             throw new ItemNotFoundException("No item found with id of " + id);
         }
-        List<Tag> tags = tagService.getTagsByItem(item);
+        Set<Tag> tags = tagService.getTagsByItem(item);
 
         return ResponseEntity.ok(tags);
     }
 
     @PostMapping(consumes = "multipart/form-data")
-    public ResponseEntity<Item> addItem(
-            @RequestPart("itemForm") ItemForm itemForm,
-            @RequestPart(value = "files", required = false)
-                @Size(max = 10, message = "You may upload a maximum of 10 images.")
-                List<MultipartFile> files
+    public ResponseEntity<?> addItem(
+        @RequestPart("itemForm") ItemForm itemForm,
+        @RequestPart(value = "files", required = false)
+            @Size(max = 10, message = "You may upload a maximum of 10 images.")
+            List<MultipartFile> files
     ) {
+        Item item;
         Set<Image> images = null;
-        if (files != null) {
-            images =
-                files.stream().map(file -> {
-                    String filename = fileService.storeFile(file);
-                    return new Image(filename, file.getOriginalFilename(), file.getSize());
-                }).collect(Collectors.toSet());
-        }
-        itemForm.setImages(images);
-        itemForm.setUser(userService.getCurrentlyAuthenticatedUser());
-        itemForm.setDate(LocalDate.now());
-        Item item = itemService.addItem(itemForm);
-        if (item == null && images != null) {
-            // failed to create item; delete files in s3 bucket
-            for (Image image : images) {
-                fileService.deleteFile(image);
+        try {
+            if (files != null) {
+                images =
+                    files.stream().map(file -> {
+                        String filename = fileService.storeFile(file);
+                        return new Image(filename, file.getOriginalFilename(), file.getSize());
+                    }).collect(Collectors.toSet());
             }
+            itemForm.setImages(images);
+            itemForm.setUser(userService.getCurrentlyAuthenticatedUser());
+            itemForm.setDate(LocalDate.now());
+            item = itemService.addItem(itemForm);
+        } catch (Exception e) {
+            if (images != null) {
+                // failed to create item; delete files in s3 bucket
+                for (Image image : images) {
+                    fileService.deleteFile(image);
+                }
+            }
+            return ResponseEntity.status(400).body("Item failed to upload");
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
@@ -132,6 +140,32 @@ public class ItemController {
         return ResponseEntity.ok(images);
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<SearchResponse> searchItems(
+            //TODO: ensure either term or tag is not null
+        @RequestParam(name = "term", required = false) String term,
+        @RequestParam(name = "tag", required = false) List<String> tags,
+        @RequestParam(name = "pageSize", required = false, defaultValue = "24") Integer pageSize,
+        @RequestParam(name = "page", required = false, defaultValue = "0") Integer page,
+        @RequestParam(name = "sortMethod", required = false, defaultValue = "date_desc") SortMethod sortMethod,
+        @RequestParam(name = "and", required = false, defaultValue = "false") Boolean useAnd,
+        Authentication authentication
+    ) {
+        User user = userService.findUserByUsername(authentication.getName());
+        Set<Tag> tagResults = new HashSet<>();
+        if (tags != null && !tags.isEmpty()) {
+            tagResults = tags.stream()
+                .map(tagService::findTagByName)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        }
+        long totalResultCount = itemService.getFullSearchResults(tagResults, term, useAnd).size();
+        Set<Item> searchResults = itemService
+            .searchItemsByTermAndTags(tagResults, term, pageSize, page, sortMethod, useAnd, user);
+
+        return ResponseEntity.ok(new SearchResponse(totalResultCount, searchResults));
+    }
+
     // POST method used because CommonsMultipartResolver does not accept PUT method
     @PostMapping(path = "/{id}/images", consumes = "multipart/form-data")
     public ResponseEntity<Item> updateItemImages(
@@ -153,7 +187,6 @@ public class ItemController {
             images.forEach(item::addImage);
             itemService.save(item);
         } catch (Exception e) {
-            System.out.println("ERROR: " + e.getMessage());
             images.forEach(fileService::deleteFile);
         }
 
@@ -172,7 +205,6 @@ public class ItemController {
         try {
             Set<Image> images = imageService.findImagesByItem(item);
             // delete all item's images
-            images.forEach(System.out::println);
             images.forEach(fileService::deleteFile);
             item.setImages(null);
             itemService.delete(item);

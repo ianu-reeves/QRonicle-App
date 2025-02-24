@@ -6,6 +6,7 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
+import com.qronicle.enums.StringToSortMethodConverter;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.orm.hibernate5.HibernateTransactionManager;
@@ -55,7 +57,7 @@ public class AppConfig implements WebMvcConfigurer {
         dataSource.setMinPoolSize(propToInt(env.getProperty("connection.minPoolSize")));
         dataSource.setMaxPoolSize(propToInt(env.getProperty("connection.maxPoolSize")));
         dataSource.setMaxIdleTime(propToInt(env.getProperty("connection.maxIdleTime")));
-
+        dataSource.setTestConnectionOnCheckout(Boolean.parseBoolean(env.getProperty("connection.testConnectionOnCheckout")));
         // jdbc
         try {
             dataSource.setDriverClass(env.getProperty("jdbc.driver"));
@@ -136,6 +138,11 @@ public class AppConfig implements WebMvcConfigurer {
         resolver.setSuffix(".jsp");
 
         return resolver;
+    }
+
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        registry.addConverter(new StringToSortMethodConverter());
     }
 
     @Bean

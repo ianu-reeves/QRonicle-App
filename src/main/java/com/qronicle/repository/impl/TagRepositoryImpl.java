@@ -10,7 +10,8 @@ import org.hibernate.jpa.QueryHints;
 import org.hibernate.query.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Repository
 public class TagRepositoryImpl implements TagRepository {
@@ -22,38 +23,53 @@ public class TagRepositoryImpl implements TagRepository {
 
     @Override
     public Tag findTagByName(String name) {
+        Tag tag = null;
         Session session = sessionFactory.getCurrentSession();
         Query<Tag> query = session.createQuery("FROM Tag WHERE description=:n", Tag.class);
         query.setParameter("n", name);
+        try {
+            tag = query.getSingleResult();
+        } catch (Exception e) {
+        }
 
-        return query.getSingleResult();
+        return tag;
     }
 
     @Override
-    public List<Tag> getAll() {
+    public Set<Tag> getAll() {
         Session session = sessionFactory.getCurrentSession();
         Query<Tag> query = session.createQuery("FROM Tag", Tag.class);
 
-        return query.getResultList();
+        return new HashSet<>(query.getResultList());
     }
 
     @Override
-    public List<Tag> getTagsByUser(User user) {
+    public Set<Tag> getTagsByUser(User user) {
         Session session = sessionFactory.getCurrentSession();
         Query<Tag> query = session.createQuery(
                 "SELECT DISTINCT t FROM Tag t LEFT JOIN FETCH t.items i WHERE i.owner=:u", Tag.class);
         query.setParameter("u", user);
         query.setHint(QueryHints.HINT_PASS_DISTINCT_THROUGH, false);
 
-        return query.getResultList();
+        return new HashSet<>(query.getResultList());
     }
 
     @Override
-    public List<Tag> getTagsByItem(Item item) {
+    public Set<Tag> getTagsByItem(Item item) {
         Session session = sessionFactory.getCurrentSession();
         Query<Tag> query = session.createQuery("FROM Tag t LEFT JOIN FETCH t.items i WHERE i=:it", Tag.class);
         query.setParameter("it", item);
 
-        return query.getResultList();
+        return new HashSet<>(query.getResultList());
+    }
+
+    @Override
+    public Set<Tag> searchTagsByName(String name) {
+        Session session = sessionFactory.getCurrentSession();
+        Query<Tag> query = session.createQuery(
+            "FROM Tag t WHERE LOWER(t.description) LIKE CONCAT(LOWER(:name), '%')",Tag.class);
+        query.setParameter("name", name);
+
+        return new HashSet<>(query.getResultList());
     }
 }

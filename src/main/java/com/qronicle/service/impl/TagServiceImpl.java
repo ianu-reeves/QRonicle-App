@@ -8,7 +8,7 @@ import com.qronicle.service.interfaces.TagService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Set;
 
 @Service
 public class TagServiceImpl implements TagService {
@@ -26,19 +26,25 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
-    public List<Tag> getAll() {
+    public Set<Tag> getAll() {
         return tagRepository.getAll();
     }
 
     @Override
     @Transactional
-    public List<Tag> getTagsByUser(User user) {
+    public Set<Tag> getTagsByUser(User user) {
         return tagRepository.getTagsByUser(user);
     }
 
     @Override
     @Transactional
-    public List<Tag> getTagsByItem(Item item) {
+    public Set<Tag> getTagsByItem(Item item) {
         return tagRepository.getTagsByItem(item);
+    }
+
+    @Override
+    @Transactional
+    public Set<Tag> searchTagsByName(String name) {
+        return tagRepository.searchTagsByName(name);
     }
 }

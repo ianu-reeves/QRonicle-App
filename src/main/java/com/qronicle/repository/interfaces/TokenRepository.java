@@ -7,5 +7,6 @@ public interface TokenRepository {
     RefreshToken getTokenByValue(String tokenValue);
     void save(RefreshToken refreshToken);
     void delete(RefreshToken refreshToken);
-    void deleteAll(User user);
+    void deleteAllForUser(User user);
+    void deleteAllForDevice(User user, String userAgent);
 }
