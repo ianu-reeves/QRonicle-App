@@ -13,4 +13,4 @@ This is a publicly accessible version of the QRonicle web application. As such, 
 in this distribution for security reasons. This means that while the code present in these files is the same source code used in the live deployment, downloading the
 source code from this repository will not be sufficient to run the application natively on your machine.
 
-### You can acess the live site deployment [HERE](https://qronicle.netlify.app)
+### You can acess the live site deployment [HERE](https://qronicle.cc)
